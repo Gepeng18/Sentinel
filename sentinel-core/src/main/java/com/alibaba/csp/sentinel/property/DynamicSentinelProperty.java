@@ -46,12 +46,15 @@ public class DynamicSentinelProperty<T> implements SentinelProperty<T> {
 
     @Override
     public boolean updateValue(T newValue) {
+        // 判断传入的规则是否和之前相等
         if (isEqual(value, newValue)) {
             return false;
         }
         RecordLog.info("[DynamicSentinelProperty] Config will be updated to: {}", newValue);
 
+        // 替换新规则
         value = newValue;
+        // 针对之前add进来的所有监听者，通知所有的监听器更新一下规则配置
         for (PropertyListener<T> listener : listeners) {
             listener.configUpdate(newValue);
         }

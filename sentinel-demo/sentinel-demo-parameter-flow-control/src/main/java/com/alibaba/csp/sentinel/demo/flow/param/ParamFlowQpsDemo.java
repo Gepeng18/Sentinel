@@ -23,6 +23,7 @@ import com.alibaba.csp.sentinel.slots.block.flow.param.ParamFlowRule;
 import com.alibaba.csp.sentinel.slots.block.flow.param.ParamFlowRuleManager;
 
 /**
+ * https://github.com/alibaba/Sentinel/wiki/%E7%83%AD%E7%82%B9%E5%8F%82%E6%95%B0%E9%99%90%E6%B5%81
  * This demo demonstrates flow control by frequent ("hot spot") parameters.
  *
  * @author Eric Zhao
@@ -63,10 +64,12 @@ public class ParamFlowQpsDemo {
             //.setMaxQueueingTimeMs(600)
             .setCount(5);
 
+        // 针对 int 类型的参数 PARAM_B，单独设置限流 QPS 阈值为 10，而不是全局的阈值 5
         // We can set threshold count for specific parameter value individually.
         // Here we add an exception item. That means: QPS threshold of entries with parameter `PARAM_B` (type: int)
         // in index 0 will be 10, rather than the global threshold (5).
-        ParamFlowItem item = new ParamFlowItem().setObject(String.valueOf(PARAM_B))
+        ParamFlowItem item = new ParamFlowItem()
+            .setObject(String.valueOf(PARAM_B))
             .setClassType(int.class.getName())
             .setCount(10);
         rule.setParamFlowItemList(Collections.singletonList(item));

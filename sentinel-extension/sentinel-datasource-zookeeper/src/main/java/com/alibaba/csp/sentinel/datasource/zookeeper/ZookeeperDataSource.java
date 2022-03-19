@@ -95,6 +95,7 @@ public class ZookeeperDataSource<T> extends AbstractDataSource<String, T> {
             if (newValue == null) {
                 RecordLog.warn("[ZookeeperDataSource] WARN: initial config is null, you may have to check your data source");
             }
+            // 加载节点的信息
             getProperty().updateValue(newValue);
         } catch (Exception ex) {
             RecordLog.warn("[ZookeeperDataSource] Error when loading initial config", ex);
@@ -103,7 +104,7 @@ public class ZookeeperDataSource<T> extends AbstractDataSource<String, T> {
 
     private void initZookeeperListener(final String serverAddr, final List<AuthInfo> authInfos) {
         try {
-
+            // 设置监听
             this.listener = new NodeCacheListener() {
                 @Override
                 public void nodeChanged() {
@@ -124,9 +125,11 @@ public class ZookeeperDataSource<T> extends AbstractDataSource<String, T> {
             if (zkClientMap.containsKey(zkKey)) {
                 this.zkClient = zkClientMap.get(zkKey);
             } else {
+                // 如果key不存在，那么就加锁设值
                 synchronized (lock) {
                     if (!zkClientMap.containsKey(zkKey)) {
                         CuratorFramework zc = null;
+                        // 根据不同的条件获取client
                         if (authInfos == null || authInfos.size() == 0) {
                             zc = CuratorFrameworkFactory.newClient(serverAddr, new ExponentialBackoffRetry(SLEEP_TIME, RETRY_TIMES));
                         } else {
@@ -148,6 +151,8 @@ public class ZookeeperDataSource<T> extends AbstractDataSource<String, T> {
                 }
             }
 
+            // 为节点添加watcher
+            // 监听数据节点的变更，会触发事件
             this.nodeCache = new NodeCache(this.zkClient, this.path);
             this.nodeCache.getListenable().addListener(this.listener, this.pool);
             this.nodeCache.start();
@@ -157,6 +162,9 @@ public class ZookeeperDataSource<T> extends AbstractDataSource<String, T> {
         }
     }
 
+    /**
+     * 读取节点信息
+     */
     @Override
     public String readSource() throws Exception {
         if (this.zkClient == null) {

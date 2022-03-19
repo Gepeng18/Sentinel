@@ -28,6 +28,7 @@ import com.alibaba.csp.sentinel.slots.statistic.metric.occupy.OccupiableBucketLe
 import com.alibaba.csp.sentinel.util.function.Predicate;
 
 /**
+ * 华东窗口入口类
  * The basic metric class in Sentinel using a {@link BucketLeapArray} internal.
  *
  * @author jialiang.linjl
@@ -35,12 +36,21 @@ import com.alibaba.csp.sentinel.util.function.Predicate;
  */
 public class ArrayMetric implements Metric {
 
+    // MetricBucket 即表示指标桶，一个抽样时间段内的所有指标
     private final LeapArray<MetricBucket> data;
 
+    /**
+     * @param sampleCount 一个采集间隔中的抽样个数，如1秒钟分为5个抽样区间，每个区间就是0.2秒
+     * @param intervalInMs 采集的时间间隔，如1秒钟
+     */
     public ArrayMetric(int sampleCount, int intervalInMs) {
         this.data = new OccupiableBucketLeapArray(sampleCount, intervalInMs);
     }
 
+    /**
+     * @param enableOccupy 是否允许抢占，即当前时间戳已经达到限制后，是否可以占用下一个时间窗口的容量，
+     * 这里对应 LeapArray 的两个实现类，如果允许抢占，则为 OccupiableBucketLeapArray，否则为 BucketLeapArray。
+     */
     public ArrayMetric(int sampleCount, int intervalInMs, boolean enableOccupy) {
         if (enableOccupy) {
             this.data = new OccupiableBucketLeapArray(sampleCount, intervalInMs);
@@ -155,6 +165,7 @@ public class ArrayMetric implements Metric {
     @Override
     public List<MetricNode> details() {
         List<MetricNode> details = new ArrayList<>();
+        //调用BucketLeapArray
         data.currentWindow();
         List<WindowWrap<MetricBucket>> list = data.list();
         for (WindowWrap<MetricBucket> window : list) {
@@ -162,6 +173,8 @@ public class ArrayMetric implements Metric {
                 continue;
             }
 
+            // 对统计结果进行封装
+            // WindowWrap是一个包装器，里面包装了MetricBucket，这里将MetricBucket转化为MetricNode，其实就是参数的赋值
             details.add(fromBucket(window));
         }
 

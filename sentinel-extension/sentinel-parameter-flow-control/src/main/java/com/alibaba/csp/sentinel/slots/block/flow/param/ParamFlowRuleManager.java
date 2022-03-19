@@ -101,6 +101,7 @@ public final class ParamFlowRuleManager {
         @Override
         public void configUpdate(List<ParamFlowRule> list) {
             Map<String, List<ParamFlowRule>> rules = aggregateAndPrepareParamRules(list);
+            // 将载入的规则放在PARAM_FLOW_RULES(ConcurrentHashMap<ResourceName, List<ParamFlowRule>>)
             if (rules != null) {
                 PARAM_FLOW_RULES.clear();
                 PARAM_FLOW_RULES.putAll(rules);
@@ -119,6 +120,7 @@ public final class ParamFlowRuleManager {
         }
 
         private Map<String, List<ParamFlowRule>> aggregateAndPrepareParamRules(List<ParamFlowRule> list) {
+            // key为resource，value为List<ParamFlowRule>
             Map<String, List<ParamFlowRule>> newRuleMap = ParamFlowRuleUtil.buildParamRuleMap(list);
             if (newRuleMap == null || newRuleMap.isEmpty()) {
                 // No parameter flow rules, so clear all the metrics.
@@ -136,6 +138,7 @@ public final class ParamFlowRuleManager {
                 }
                 List<ParamFlowRule> newRuleList = newRuleMap.get(resource);
                 List<ParamFlowRule> oldRuleList = new ArrayList<>(entry.getValue());
+                // ParameterMetricStorage.getParamMetricForResource 将老的全部移除
                 oldRuleList.removeAll(newRuleList);
                 for (ParamFlowRule rule : oldRuleList) {
                     ParameterMetric parameterMetric = ParameterMetricStorage.getParamMetricForResource(resource);

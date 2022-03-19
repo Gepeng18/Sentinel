@@ -47,7 +47,9 @@ public class DefaultController implements TrafficShapingController {
 
     @Override
     public boolean canPass(Node node, int acquireCount, boolean prioritized) {
+        // 判断是限流还是限制并发数量(根据grade判断当前的规则是QPS限流还是线程数限流)，然后获取流量或并发数量
         int curCount = avgUsedTokens(node);
+        // 如果两者相加大于限定的并发数
         if (curCount + acquireCount > count) {
             if (prioritized && grade == RuleConstant.FLOW_GRADE_QPS) {
                 long currentTime;

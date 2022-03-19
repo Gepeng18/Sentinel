@@ -110,6 +110,7 @@ class ParamFlowQpsRunner<T> {
 
             while (!stop) {
                 Entry entry = null;
+                // 本次请求传入的param，rule中的param已经通过manager设置进去了
                 T param = generateParam();
                 try {
                     entry = SphU.entry(resourceName, EntryType.IN, 1, param);

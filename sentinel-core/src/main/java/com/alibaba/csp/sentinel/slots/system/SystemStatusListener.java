@@ -46,6 +46,10 @@ public class SystemStatusListener implements Runnable {
         return currentCpuUsage;
     }
 
+    /**
+     * 1. 定时收集全局资源情况，并打印日志
+     * 2. 给全局变量 currentLoad 和 currentCpuUsage 赋值，用来做限流使用。
+     */
     @Override
     public void run() {
         try {

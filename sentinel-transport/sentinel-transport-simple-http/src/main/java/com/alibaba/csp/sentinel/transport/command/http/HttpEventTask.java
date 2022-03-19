@@ -91,6 +91,7 @@ public class HttpEventTask implements Runnable {
             }
 
             // Validate the target command.
+            // 获取commandName
             String commandName = HttpCommandUtils.getTarget(request);
             if (StringUtil.isBlank(commandName)) {
                 writeResponse(printWriter, StatusCode.BAD_REQUEST, INVALID_COMMAND_MESSAGE);
@@ -98,8 +99,13 @@ public class HttpEventTask implements Runnable {
             }
 
             // Find the matching command handler.
+            // SimpleHttpCommandCenter中的handlerMap里面的数据是通过前面我们分析的调用beforeStart方法设置进来的。
+            // 根据commandName获取处理器名字
+            // 然后通过commandName获取对应的控制台，例如：控制台发送过来metric指令，
+            // 那么就会对应的调用SendMetricCommandHandler的handle方法来处理控制台的指令
             CommandHandler<?> commandHandler = SimpleHttpCommandCenter.getHandler(commandName);
             if (commandHandler != null) {
+                // 调用处理器结果，然后返回给控制台
                 CommandResponse<?> response = commandHandler.handle(request);
                 handleResponse(response, printWriter);
             } else {

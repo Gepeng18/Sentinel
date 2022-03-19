@@ -33,21 +33,28 @@ import com.alibaba.csp.sentinel.slots.clusterbuilder.ClusterBuilderSlot;
  */
 public class MetricTimerListener implements Runnable {
 
+    // 两个配置参数
     private static final MetricWriter metricWriter = new MetricWriter(SentinelConfig.singleMetricFileSize(),
         SentinelConfig.totalMetricFileCount());
 
+    /**
+     * 这个run方法里面主要是做定时的数据采集，然后写到log文件里去
+     */
     @Override
     public void run() {
         Map<Long, List<MetricNode>> maps = new TreeMap<>();
         for (Entry<ResourceWrapper, ClusterNode> e : ClusterBuilderSlot.getClusterNodeMap().entrySet()) {
             ClusterNode node = e.getValue();
             Map<Long, MetricNode> metrics = node.metrics();
+            // 将metrics和node封装到map中
             aggregate(maps, metrics, node);
         }
+        // 将全局入口的metrics和node也封装到map中
         aggregate(maps, Constants.ENTRY_NODE.metrics(), Constants.ENTRY_NODE);
         if (!maps.isEmpty()) {
             for (Entry<Long, List<MetricNode>> entry : maps.entrySet()) {
                 try {
+                    // 保存到日志中
                     metricWriter.write(entry.getKey(), entry.getValue());
                 } catch (Exception e) {
                     RecordLog.warn("[MetricTimerListener] Write metric error", e);
@@ -56,12 +63,17 @@ public class MetricTimerListener implements Runnable {
         }
     }
 
+    /**
+     * 将metrics 和 node 封装到 map 中
+     */
     private void aggregate(Map<Long, List<MetricNode>> maps, Map<Long, MetricNode> metrics, ClusterNode node) {
         for (Entry<Long, MetricNode> entry : metrics.entrySet()) {
             long time = entry.getKey();
+            // 将node的name 和 resourceType 放到entry的value中
             MetricNode metricNode = entry.getValue();
             metricNode.setResource(node.getName());
             metricNode.setClassification(node.getResourceType());
+            // 将entry的value放到map的value(List)中
             maps.computeIfAbsent(time, k -> new ArrayList<MetricNode>());
             List<MetricNode> nodes = maps.get(time);
             nodes.add(entry.getValue());

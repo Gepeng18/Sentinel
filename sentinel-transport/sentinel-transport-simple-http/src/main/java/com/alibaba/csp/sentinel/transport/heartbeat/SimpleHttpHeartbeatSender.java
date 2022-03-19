@@ -57,20 +57,28 @@ public class SimpleHttpHeartbeatSender implements HeartbeatSender {
         this.addressList = newAddrs;
     }
 
+    /**
+     * Dcsp.sentinel.dashboard.server预先设置好的ip和端口号发送post请求到控制台，
+     * 然后检测是否返回200，如果是则说明控制台正常，否则进行异常处理。
+     */
     @Override
     public boolean sendHeartbeat() throws Exception {
         if (TransportConfig.getRuntimePort() <= 0) {
             RecordLog.info("[SimpleHttpHeartbeatSender] Command server port not initialized, won't send heartbeat");
             return false;
         }
+        // 获取控制台的ip和端口等信息
         Endpoint addrInfo = getAvailableAddress();
         if (addrInfo == null) {
             return false;
         }
 
+        // 设置http调用的ip和端口，还有访问的url
         SimpleHttpRequest request = new SimpleHttpRequest(addrInfo, TransportConfig.getHeartbeatApiPath());
+        // 获取版本号，端口等信息
         request.setParams(heartBeat.generateCurrentMessage());
         try {
+            // 发送post请求
             SimpleHttpResponse response = httpClient.post(request);
             if (response.getStatusCode() == OK_STATUS) {
                 return true;

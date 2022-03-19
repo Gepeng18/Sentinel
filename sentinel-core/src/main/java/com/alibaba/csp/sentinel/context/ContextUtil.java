@@ -64,8 +64,11 @@ public class ContextUtil {
 
     private static void initDefaultContext() {
         String defaultContextName = Constants.CONTEXT_DEFAULT_NAME;
+        // 初始化一个name为sentinel_default_context，type为in的node节点
         EntranceNode node = new EntranceNode(new StringResourceWrapper(defaultContextName, EntryType.IN), null);
+        // Constants.ROOT会初始化一个name是machine-root，type=IN的对象
         Constants.ROOT.addChild(node);
+        // 所以现在全局map中有一个key=CONTEXT_DEFAULT_NAME的对象
         contextNameNodeMap.put(defaultContextName, node);
     }
 
@@ -117,6 +120,12 @@ public class ContextUtil {
         return trueEnter(name, origin);
     }
 
+    /**
+     * 主要干了两件事，将node创建并放到root中，将context创建并放到threadlocal中
+     * 1. 创建一个name对应的node，放入root的树下，root是一个全局信息
+     * 2. 通过写时复制的方式写入全局map
+     * 3. 构建context，并设置到threadlocal中
+     */
     protected static Context trueEnter(String name, String origin) {
         Context context = contextHolder.get();
         if (context == null) {
@@ -127,6 +136,8 @@ public class ContextUtil {
                     setNullContext();
                     return NULL_CONTEXT;
                 } else {
+                    // 1. 创建一个name对应的node，放入root的树下
+                    // 2. 通过写时复制的方式写入全局map
                     LOCK.lock();
                     try {
                         node = contextNameNodeMap.get(name);
@@ -150,6 +161,8 @@ public class ContextUtil {
                     }
                 }
             }
+            // 1. 构建context
+            // 2. 设置到threadlocal中
             context = new Context(node, name);
             context.setOrigin(origin);
             contextHolder.set(context);

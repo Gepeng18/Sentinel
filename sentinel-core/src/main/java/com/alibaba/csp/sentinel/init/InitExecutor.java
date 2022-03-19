@@ -39,17 +39,22 @@ public final class InitExecutor {
      * The initialization will be executed only once.
      */
     public static void doInit() {
+        // 本行代码保证InitExecutor只初始化一次
         if (!initialized.compareAndSet(false, true)) {
             return;
         }
         try {
+            // 通过spi加载InitFunc子类
             List<InitFunc> initFuncs = SpiLoader.of(InitFunc.class).loadInstanceListSorted();
             List<OrderWrapper> initList = new ArrayList<OrderWrapper>();
             for (InitFunc initFunc : initFuncs) {
                 RecordLog.info("[InitExecutor] Found init func: {}", initFunc.getClass().getCanonicalName());
+                // 给所有的initFunc排序，按@InitOrder从小到大进行排序
+                // 然后封装成OrderWrapper对象扔进initList
                 insertSorted(initList, initFunc);
             }
             for (OrderWrapper w : initList) {
+                // 这里调用MetricCallbackInit的init方法
                 w.func.init();
                 RecordLog.info("[InitExecutor] Executing {} with order {}",
                     w.func.getClass().getCanonicalName(), w.order);

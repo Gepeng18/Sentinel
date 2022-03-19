@@ -88,10 +88,16 @@ public final class SystemRuleManager {
     private final static SystemPropertyListener listener = new SystemPropertyListener();
     private static SentinelProperty<List<SystemRule>> currentProperty = new DynamicSentinelProperty<List<SystemRule>>();
 
+    /**
+     * 初始化了一个线程池
+     */
     @SuppressWarnings("PMD.ThreadPoolCreationRule")
     private final static ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1,
         new NamedThreadFactory("sentinel-system-status-record-task", true));
 
+    /*
+     * 用scheduler线程池定时调用SystemStatusListener类的run方法
+     */
     static {
         checkSystemStatus.set(false);
         statusListener = new SystemStatusListener();
@@ -184,10 +190,11 @@ public final class SystemRuleManager {
 
         @Override
         public synchronized void configUpdate(List<SystemRule> rules) {
-            restoreSetting();
+            restoreSetting();  // 重置rule的属性
             // systemRules = rules;
             if (rules != null && rules.size() >= 1) {
                 for (SystemRule rule : rules) {
+                    //将各个rule加载到manager中来，基本都是对各项参数取最小值，因为会配置多个规则，如QPS限制等
                     loadSystemConf(rule);
                 }
             } else {
@@ -277,6 +284,7 @@ public final class SystemRuleManager {
             checkStatus = true;
         }
 
+        // 表示开启系统自适应限流
         checkSystemStatus.set(checkStatus);
 
     }
@@ -296,11 +304,13 @@ public final class SystemRuleManager {
             return;
         }
 
+        //如果不是入口流量，那么直接返回
         // for inbound traffic only
         if (resourceWrapper.getEntryType() != EntryType.IN) {
             return;
         }
 
+        // Constants.ENTRY_NODE 是一个全局对象，所以这里的限流操作都是对全局其作用的，而不是对资源起作用。
         // total qps
         double currentQps = Constants.ENTRY_NODE == null ? 0.0 : Constants.ENTRY_NODE.passQps();
         if (currentQps + count > qps) {
@@ -319,6 +329,8 @@ public final class SystemRuleManager {
         }
 
         // load. BBR algorithm.
+        // getCurrentSystemAvgLoad() 和 getCurrentCpuUsage() 会获取到SystemStatusListener中设置的值
+        // 该值是通过定时任务定时搜集的
         if (highestSystemLoadIsSet && getCurrentSystemAvgLoad() > highestSystemLoad) {
             if (!checkBbr(currentThread)) {
                 throw new SystemBlockException(resourceWrapper.getName(), "load");
@@ -331,6 +343,7 @@ public final class SystemRuleManager {
         }
     }
 
+    // 当系统当前的并发线程数超过系统容量时才会触发系统保护。系统容量由系统的 maxQps * minRt 计算得出
     private static boolean checkBbr(int currentThread) {
         if (currentThread > 1 &&
             currentThread > Constants.ENTRY_NODE.maxSuccessQps() * Constants.ENTRY_NODE.minRt() / 1000) {

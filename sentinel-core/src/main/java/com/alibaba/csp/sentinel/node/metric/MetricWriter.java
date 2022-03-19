@@ -88,6 +88,11 @@ public class MetricWriter {
         this(singleFileSize, 6);
     }
 
+    /**
+     * 主要是创建文件夹，设置单个文件的大小，总文件的数量
+     * @param singleFileSize 单个文件大小
+     * @param totalFileCount 总文件数量
+     */
     public MetricWriter(long singleFileSize, int totalFileCount) {
         if (singleFileSize <= 0 || totalFileCount <= 0) {
             throw new IllegalArgumentException();

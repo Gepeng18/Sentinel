@@ -124,6 +124,10 @@ public class DefaultNode extends StatisticNode {
         this.clusterNode.addRtAndSuccess(rt, successCount);
     }
 
+    /**
+     * 通常都加两个数
+     * 一个是本统计节点的数，一个是集群节点的数
+     */
     @Override
     public void increaseThreadNum() {
         super.increaseThreadNum();

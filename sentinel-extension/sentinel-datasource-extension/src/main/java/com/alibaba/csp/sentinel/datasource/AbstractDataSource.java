@@ -41,6 +41,7 @@ public abstract class AbstractDataSource<S, T> implements ReadableDataSource<S, 
 
     @Override
     public T loadConfig() throws Exception {
+        // readSource()就是读取文件内容，然后调用loadConfig，调用传入的解析器解析文件的内容
         return loadConfig(readSource());
     }
 

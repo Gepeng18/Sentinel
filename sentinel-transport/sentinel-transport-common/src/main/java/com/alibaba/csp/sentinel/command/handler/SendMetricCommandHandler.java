@@ -46,24 +46,32 @@ public class SendMetricCommandHandler implements CommandHandler<String> {
 
     private final Object lock = new Object();
 
+    /**
+     * 所以handle方法里面主要是如何根据请求的开始结束时间，资源名来获取磁盘的文件，
+     * 然后返回磁盘的统计信息，并记录一下当前的统计信息，防止重复发送统计数据到控制台。
+     */
     @Override
     public CommandResponse<String> handle(CommandRequest request) {
         // Note: not thread-safe.
         if (searcher == null) {
             synchronized (lock) {
+                // 获取应用名
                 String appName = SentinelConfig.getAppName();
                 if (appName == null) {
                     appName = "";
                 }
                 if (searcher == null) {
+                    // 用来找metric文件
                     searcher = new MetricSearcher(MetricWriter.METRIC_BASE_DIR,
                         MetricWriter.formMetricFileName(appName, PidUtil.getPid()));
                 }
             }
         }
+        // 获取请求的开始结束时间和最大的行数
         String startTimeStr = request.getParam("startTime");
         String endTimeStr = request.getParam("endTime");
         String maxLinesStr = request.getParam("maxLines");
+        // 用来确定资源
         String identity = request.getParam("identity");
         long startTime = -1;
         int maxLines = 6000;
@@ -77,6 +85,7 @@ public class SendMetricCommandHandler implements CommandHandler<String> {
             // Find by end time if set.
             if (StringUtil.isNotBlank(endTimeStr)) {
                 long endTime = Long.parseLong(endTimeStr);
+                // 根据开始结束时间找到统计数据
                 list = searcher.findByTimeAndResource(startTime, endTime, identity);
             } else {
                 if (StringUtil.isNotBlank(maxLinesStr)) {
@@ -91,6 +100,7 @@ public class SendMetricCommandHandler implements CommandHandler<String> {
         if (list == null) {
             list = new ArrayList<>();
         }
+        // 如果identity为空就加入CPU负载和系统负载
         if (StringUtil.isBlank(identity)) {
             addCpuUsageAndLoad(list);
         }

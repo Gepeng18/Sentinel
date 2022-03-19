@@ -31,12 +31,16 @@ public class MetricBucket {
 
     private volatile long minRt;
 
+    /**
+     * 创建了一个数组，每个统计枚举占一位
+     */
     public MetricBucket() {
         MetricEvent[] events = MetricEvent.values();
         this.counters = new LongAdder[events.length];
         for (MetricEvent event : events) {
             counters[event.ordinal()] = new LongAdder();
         }
+        // 初始化minRt，默认是4900
         initMinRt();
     }
 

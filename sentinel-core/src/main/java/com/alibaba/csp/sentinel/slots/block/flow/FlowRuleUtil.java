@@ -71,6 +71,7 @@ public final class FlowRuleUtil {
     }
 
     /**
+     * 相同的resource的rule都放到一起排序后返回
      * Build the flow rule map from raw list of flow rules, grouping by provided group function.
      *
      * @param list          raw list of flow rules
@@ -86,9 +87,11 @@ public final class FlowRuleUtil {
         if (list == null || list.isEmpty()) {
             return newRuleMap;
         }
+        // key为资源，value为资源下的rules
         Map<K, Set<FlowRule>> tmpMap = new ConcurrentHashMap<>();
 
         for (FlowRule rule : list) {
+            // 校验必要字段：资源名，限流阈值， 限流阈值类型，调用关系限流策略，流量控制效果等
             if (!isValidRule(rule)) {
                 RecordLog.warn("[FlowRuleManager] Ignoring invalid flow rule when loading new flow rules: " + rule);
                 continue;
@@ -96,16 +99,20 @@ public final class FlowRuleUtil {
             if (filter != null && !filter.test(rule)) {
                 continue;
             }
+            // 应用名，如果没有则会使用default
             if (StringUtil.isBlank(rule.getLimitApp())) {
                 rule.setLimitApp(RuleConstant.LIMIT_APP_DEFAULT);
             }
+            // 设置拒绝策略：直接拒绝、Warm Up、匀速排队，默认是 DefaultController
             TrafficShapingController rater = generateRater(rule);
             rule.setRater(rater);
 
+            // 获取Resource名字
             K key = groupFunction.apply(rule);
             if (key == null) {
                 continue;
             }
+            // 根据Resource进行分组
             Set<FlowRule> flowRules = tmpMap.get(key);
 
             if (flowRules == null) {
@@ -116,6 +123,7 @@ public final class FlowRuleUtil {
 
             flowRules.add(rule);
         }
+        // 排序器对每个资源下的若干rules排序
         Comparator<FlowRule> comparator = new FlowRuleComparator();
         for (Entry<K, Set<FlowRule>> entries : tmpMap.entrySet()) {
             List<FlowRule> rules = new ArrayList<>(entries.getValue());
@@ -123,6 +131,7 @@ public final class FlowRuleUtil {
                 // Sort the rules.
                 Collections.sort(rules, comparator);
             }
+            // 排序后的新newRuleMap
             newRuleMap.put(entries.getKey(), rules);
         }
 
@@ -130,12 +139,16 @@ public final class FlowRuleUtil {
     }
 
     private static TrafficShapingController generateRater(/*@Valid*/ FlowRule rule) {
+        // 如果设置的是按QPS的方式来限流的话，可以设置一个ControlBehavior属性，
+        // 用来做流量控制分别是：直接拒绝、Warm Up、匀速排队
         if (rule.getGrade() == RuleConstant.FLOW_GRADE_QPS) {
             switch (rule.getControlBehavior()) {
                 case RuleConstant.CONTROL_BEHAVIOR_WARM_UP:
+                    // warmUpPeriodSec默认是10
                     return new WarmUpController(rule.getCount(), rule.getWarmUpPeriodSec(),
                             ColdFactorProperty.coldFactor);
                 case RuleConstant.CONTROL_BEHAVIOR_RATE_LIMITER:
+                    // rule.getMaxQueueingTimeMs()默认是500
                     return new RateLimiterController(rule.getMaxQueueingTimeMs(), rule.getCount());
                 case RuleConstant.CONTROL_BEHAVIOR_WARM_UP_RATE_LIMITER:
                     return new WarmUpRateLimiterController(rule.getCount(), rule.getWarmUpPeriodSec(),

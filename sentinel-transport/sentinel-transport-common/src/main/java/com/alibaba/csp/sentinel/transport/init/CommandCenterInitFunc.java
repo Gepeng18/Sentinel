@@ -29,6 +29,7 @@ public class CommandCenterInitFunc implements InitFunc {
 
     @Override
     public void init() throws Exception {
+        // 获取commandCenter对象
         CommandCenter commandCenter = CommandCenterProvider.getCommandCenter();
 
         if (commandCenter == null) {
@@ -36,6 +37,7 @@ public class CommandCenterInitFunc implements InitFunc {
             return;
         }
 
+        // 调用SimpleHttpCommandCenter的beforeStart方法
         commandCenter.beforeStart();
         commandCenter.start();
         RecordLog.info("[CommandCenterInit] Starting command center: "

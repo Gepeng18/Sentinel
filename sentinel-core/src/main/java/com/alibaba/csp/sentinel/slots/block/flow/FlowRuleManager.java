@@ -48,8 +48,10 @@ import java.util.concurrent.TimeUnit;
  */
 public class FlowRuleManager {
 
+    // 规则集合
     private static volatile Map<String, List<FlowRule>> flowRules = new HashMap<>();
 
+    // 监听器
     private static final FlowPropertyListener LISTENER = new FlowPropertyListener();
     private static SentinelProperty<List<FlowRule>> currentProperty = new DynamicSentinelProperty<List<FlowRule>>();
 
@@ -80,10 +82,13 @@ public class FlowRuleManager {
                 SentinelConfig.METRIC_FLUSH_INTERVAL);
             return;
         }
+        // 每flushInterval 时间间隔，执行一次MetricTimerListener的run方法
         SCHEDULER.scheduleAtFixedRate(new MetricTimerListener(), 0, flushInterval, TimeUnit.SECONDS);
     }
 
     /**
+     * 这个方法实际上就是添加了一个监听器，然后将FlowRuleManager的currentProperty替换成flowRuleDataSource创建的property。
+     * 然后flowRuleDataSource里面的定时线程会每隔3秒钟调用一下这个LISTENER的configUpdate方法进行刷新规则，这样就实现了动态更新规则。
      * Listen to the {@link SentinelProperty} for {@link FlowRule}s. The property is the source of {@link FlowRule}s.
      * Flow rules can also be set by {@link #loadRules(List)} directly.
      *

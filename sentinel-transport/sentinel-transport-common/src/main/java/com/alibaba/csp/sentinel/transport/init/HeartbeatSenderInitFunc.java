@@ -49,15 +49,20 @@ public class HeartbeatSenderInitFunc implements InitFunc {
 
     @Override
     public void init() {
+        // 获取HeartbeatSender的实现类
         HeartbeatSender sender = HeartbeatSenderProvider.getHeartbeatSender();
         if (sender == null) {
             RecordLog.warn("[HeartbeatSenderInitFunc] WARN: No HeartbeatSender loaded");
             return;
         }
 
+        //创建一个corepoolsize为2，maximumPoolSize为最大的线程池
         initSchedulerIfNeeded();
+        // 获取心跳间隔时间，默认10s
         long interval = retrieveInterval(sender);
+        // 设置间隔心跳时间
         setIntervalIfNotExists(interval);
+        // 开启一个定时任务，每隔interval时间发送一个心跳
         scheduleHeartbeatTask(sender, interval);
     }
 
@@ -88,6 +93,7 @@ public class HeartbeatSenderInitFunc implements InitFunc {
             @Override
             public void run() {
                 try {
+                    // 创建的这个定时任务会每隔10s调用一次SimpleHttpHeartbeatSender的sendHeartbeat方法。
                     sender.sendHeartbeat();
                 } catch (Throwable e) {
                     RecordLog.warn("[HeartbeatSender] Send heartbeat error", e);

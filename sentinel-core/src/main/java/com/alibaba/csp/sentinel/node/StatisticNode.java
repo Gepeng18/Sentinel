@@ -90,6 +90,9 @@ import com.alibaba.csp.sentinel.util.function.Predicate;
 public class StatisticNode implements Node {
 
     /**
+     * 一个统计数组
+     * 最近INTERVAL秒的统计量，这个时间段被分成sampleCount份。
+     *
      * Holds statistics of the recent {@code INTERVAL} milliseconds. The {@code INTERVAL} is divided into time spans
      * by given {@code sampleCount}.
      */
@@ -97,6 +100,7 @@ public class StatisticNode implements Node {
         IntervalProperty.INTERVAL);
 
     /**
+     * 保存最近60秒的数据，windowLengthInMs被故意设置成1秒，这样每个桶一秒，我们就可以获得每秒的数据
      * Holds statistics of the recent 60 seconds. The windowLengthInMs is deliberately set to 1000 milliseconds,
      * meaning each bucket per second, in this way we can get accurate statistics of each second.
      */
@@ -108,6 +112,7 @@ public class StatisticNode implements Node {
     private LongAdder curThreadNum = new LongAdder();
 
     /**
+     * 上次统计的时间戳
      * The last timestamp when metrics were fetched.
      */
     private long lastFetchTime = -1;
@@ -116,17 +121,22 @@ public class StatisticNode implements Node {
     public Map<Long, MetricNode> metrics() {
         // The fetch operation is thread-safe under a single-thread scheduler pool.
         long currentTime = TimeUtil.currentTimeMillis();
+        // 获取当前滑动窗口的开始时间
         currentTime = currentTime - currentTime % 1000;
         Map<Long, MetricNode> metrics = new ConcurrentHashMap<>();
+        // 获取滑动窗口里统计的数据
         List<MetricNode> nodesOfEverySecond = rollingCounterInMinute.details();
         long newLastFetchTime = lastFetchTime;
         // Iterate metrics of all resources, filter valid metrics (not-empty and up-to-date).
         for (MetricNode node : nodesOfEverySecond) {
+            // isNodeInTime: node节点的时间大于上次拉取的时间，小于当前时间
+            // isValidMetricNode: 那些指标有一个大于0
             if (isNodeInTime(node, currentTime) && isValidMetricNode(node)) {
                 metrics.put(node.getTimestamp(), node);
                 newLastFetchTime = Math.max(newLastFetchTime, node.getTimestamp());
             }
         }
+        //设置成滑动窗口里统计的最大时间戳
         lastFetchTime = newLastFetchTime;
 
         return metrics;
@@ -213,6 +223,8 @@ public class StatisticNode implements Node {
 
     @Override
     public double maxSuccessQps() {
+        // 最大成功调用数是通过整个遍历整个窗口，获取所有窗口里面最大的调用数。
+        // 这个值是被StatisticSlot的entry方法中，resourceWrapper.getEntryType() == EntryType.IN 放进去的
         return (double) rollingCounterInSecond.maxSuccess() * rollingCounterInSecond.getSampleCount()
                 / rollingCounterInSecond.getWindowIntervalInSec();
     }
@@ -242,6 +254,8 @@ public class StatisticNode implements Node {
         return (int)curThreadNum.sum();
     }
 
+    // 分钟统计和秒统计都加1
+    // 直接加到MetricBucket中的某个枚举上
     @Override
     public void addPassRequest(int count) {
         rollingCounterInSecond.addPass(count);

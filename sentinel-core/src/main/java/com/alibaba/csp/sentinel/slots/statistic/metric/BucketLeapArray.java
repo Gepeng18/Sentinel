@@ -39,7 +39,7 @@ public class BucketLeapArray extends LeapArray<MetricBucket> {
 
     @Override
     protected WindowWrap<MetricBucket> resetWindowTo(WindowWrap<MetricBucket> w, long startTime) {
-        // Update the start time and reset value.
+        // 将该窗口的开始时间重置为startTime，并且重置窗口内的所有统计数据(清0)
         w.resetTo(startTime);
         w.value().reset();
         return w;

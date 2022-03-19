@@ -144,6 +144,8 @@ public final class ParamFlowRuleUtil {
         if (list == null || list.isEmpty()) {
             return newRuleMap;
         }
+
+        // tmpMap中保存的都是传入的rules
         Map<K, Set<ParamFlowRule>> tmpMap = new ConcurrentHashMap<>();
 
         for (ParamFlowRule rule : list) {
@@ -160,6 +162,7 @@ public final class ParamFlowRuleUtil {
 
             ParamFlowRuleUtil.fillExceptionFlowItems(rule);
 
+            // 获取resource
             K key = groupFunction.apply(rule);
             if (key == null) {
                 continue;
@@ -172,8 +175,11 @@ public final class ParamFlowRuleUtil {
                 tmpMap.put(key, flowRules);
             }
 
+            // ConHashmap中key为resource，value为Set<ParamFlowRule>
             flowRules.add(rule);
         }
+
+        // 对tmpMap中的value(List<ParamFlowRule>)进行排序
         for (Entry<K, Set<ParamFlowRule>> entries : tmpMap.entrySet()) {
             List<ParamFlowRule> rules = new ArrayList<>(entries.getValue());
             if (shouldSort) {

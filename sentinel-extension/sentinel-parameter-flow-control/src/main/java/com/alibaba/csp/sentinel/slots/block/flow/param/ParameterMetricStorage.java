@@ -36,6 +36,7 @@ public final class ParameterMetricStorage {
     private static final Object LOCK = new Object();
 
     /**
+     * 向metricsMap中put了一个ParameterMetric
      * Init the parameter metric and index map for given resource.
      * Package-private for test.
      *
@@ -58,6 +59,7 @@ public final class ParameterMetricStorage {
                 }
             }
         }
+        // 根据rule对metric进行初始化
         metric.initialize(rule);
     }
 

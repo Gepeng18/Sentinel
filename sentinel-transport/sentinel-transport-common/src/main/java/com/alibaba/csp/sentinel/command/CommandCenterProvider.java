@@ -30,15 +30,18 @@ public final class CommandCenterProvider {
     private static CommandCenter commandCenter = null;
 
     static {
+        // 初始化commandCenter对象
         resolveInstance();
     }
 
     private static void resolveInstance() {
+        // 获取SpiOrder更大的子类实现类，即 SimpleHttpCommandCenter
         CommandCenter resolveCommandCenter = SpiLoader.of(CommandCenter.class).loadHighestPriorityInstance();
 
         if (resolveCommandCenter == null) {
             RecordLog.warn("[CommandCenterProvider] WARN: No existing CommandCenter found");
         } else {
+            // 赋值给commandCenter
             commandCenter = resolveCommandCenter;
             RecordLog.info("[CommandCenterProvider] CommandCenter resolved: {}", resolveCommandCenter.getClass()
                 .getCanonicalName());

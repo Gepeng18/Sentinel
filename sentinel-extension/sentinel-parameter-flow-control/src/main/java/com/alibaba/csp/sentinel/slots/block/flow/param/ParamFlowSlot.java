@@ -70,10 +70,12 @@ public class ParamFlowSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
         if (!ParamFlowRuleManager.hasRules(resourceWrapper.getName())) {
             return;
         }
+
+        // 获取resource对应的manager load的所有rule
         List<ParamFlowRule> rules = ParamFlowRuleManager.getRulesOfResource(resourceWrapper.getName());
 
         for (ParamFlowRule rule : rules) {
-            applyRealParamIdx(rule, args.length);
+            applyRealParamIdx(rule, args.length); // 对rule的paramId参数进行修正
 
             // Initialize the parameter metrics.
             ParameterMetricStorage.initParamMetricsFor(resourceWrapper, rule);

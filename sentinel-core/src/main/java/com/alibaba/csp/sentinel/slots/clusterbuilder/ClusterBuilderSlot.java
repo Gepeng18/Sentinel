@@ -73,6 +73,11 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
 
     private volatile ClusterNode clusterNode = null;
 
+    /**
+     * 然后再经过ClusterBuilderSlot槽位在初始化的时候会初始化一个静态的全局clusterNodeMap用来记录所有的ClusterNode，
+     * 维度是ResourceWrapper。每次调用entry方法的时候会先去全局的clusterNodeMap，找不到就会创建一个新的clusterNode，
+     * 放入到node的ClusterNode属性中，用来统计ResourceWrapper维度下面的所有数据。
+     */
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, DefaultNode node, int count,
                       boolean prioritized, Object... args)

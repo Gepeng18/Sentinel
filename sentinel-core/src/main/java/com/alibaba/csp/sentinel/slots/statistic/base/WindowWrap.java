@@ -40,9 +40,9 @@ public class WindowWrap<T> {
     private T value;
 
     /**
-     * @param windowLengthInMs a single window bucket's time length in milliseconds.
-     * @param windowStart      the start timestamp of the window
-     * @param value            statistic data
+     * @param windowLengthInMs 时间窗口的长度.
+     * @param windowStart      时间窗口的开始时间
+     * @param value            统计数据
      */
     public WindowWrap(long windowLengthInMs, long windowStart, T value) {
         this.windowLengthInMs = windowLengthInMs;

@@ -95,13 +95,18 @@ public final class AuthorityRuleManager {
         public void configUpdate(List<AuthorityRule> conf) {
             Map<String, Set<AuthorityRule>> rules = loadAuthorityConf(conf);
 
+            // 清除ConcurrentHashMap数据
             authorityRules.clear();
             if (rules != null) {
+                // 直接将传入的rules设置为ConcurrentHashMap，其中key为resource(String)，value为Set<AuthorityRule>
                 authorityRules.putAll(rules);
             }
             RecordLog.info("[AuthorityRuleManager] Authority rules received: {}", authorityRules);
         }
 
+        /**
+         * 返回一个 key 为 resource，value为 Set<AuthorityRule> 的Map
+         */
         private Map<String, Set<AuthorityRule>> loadAuthorityConf(List<AuthorityRule> list) {
             Map<String, Set<AuthorityRule>> newRuleMap = new ConcurrentHashMap<>();
 
@@ -115,6 +120,7 @@ public final class AuthorityRuleManager {
                     continue;
                 }
 
+                // 给rule设置
                 if (StringUtil.isBlank(rule.getLimitApp())) {
                     rule.setLimitApp(RuleConstant.LIMIT_APP_DEFAULT);
                 }
@@ -127,6 +133,7 @@ public final class AuthorityRuleManager {
                     ruleSet.add(rule);
                     newRuleMap.put(identity, ruleSet);
                 } else {
+                    // 一个资源只有一个授权规则，为何还要用Set?
                     // One resource should only have at most one authority rule, so just ignore redundant rules.
                     RecordLog.warn("[AuthorityRuleManager] Ignoring redundant rule: {}", rule.toString());
                 }

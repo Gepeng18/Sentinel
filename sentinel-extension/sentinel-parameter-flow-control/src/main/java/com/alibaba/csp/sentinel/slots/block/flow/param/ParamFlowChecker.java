@@ -56,6 +56,7 @@ public final class ParamFlowChecker {
             return true;
         }
 
+        // 获取需要被限制的那个参数值，比如传入了两个参数，uid 和 did，我们只针对第二个值进行限流，所以这里取出传入的did的值
         // Get parameter value.
         Object value = args[paramIdx];
 
@@ -78,6 +79,7 @@ public final class ParamFlowChecker {
     private static boolean passLocalCheck(ResourceWrapper resourceWrapper, ParamFlowRule rule, int count,
                                           Object value) {
         try {
+            // 如果参数是集合
             if (Collection.class.isAssignableFrom(value.getClass())) {
                 for (Object param : ((Collection)value)) {
                     if (!passSingleValueCheck(resourceWrapper, rule, count, param)) {
@@ -85,6 +87,7 @@ public final class ParamFlowChecker {
                     }
                 }
             } else if (value.getClass().isArray()) {
+                // 如果参数是数组
                 int length = Array.getLength(value);
                 for (int i = 0; i < length; i++) {
                     Object param = Array.get(value, i);
@@ -104,6 +107,7 @@ public final class ParamFlowChecker {
 
     static boolean passSingleValueCheck(ResourceWrapper resourceWrapper, ParamFlowRule rule, int acquireCount,
                                         Object value) {
+        // QPS限制
         if (rule.getGrade() == RuleConstant.FLOW_GRADE_QPS) {
             if (rule.getControlBehavior() == RuleConstant.CONTROL_BEHAVIOR_RATE_LIMITER) {
                 return passThrottleLocalCheck(resourceWrapper, rule, acquireCount, value);
@@ -111,6 +115,7 @@ public final class ParamFlowChecker {
                 return passDefaultLocalCheck(resourceWrapper, rule, acquireCount, value);
             }
         } else if (rule.getGrade() == RuleConstant.FLOW_GRADE_THREAD) {
+            // 线程数限制
             Set<Object> exclusionItems = rule.getParsedHotItems().keySet();
             long threadCount = getParameterMetric(resourceWrapper).getThreadCount(rule.getParamIdx(), value);
             if (exclusionItems.contains(value)) {
@@ -126,7 +131,9 @@ public final class ParamFlowChecker {
 
     static boolean passDefaultLocalCheck(ResourceWrapper resourceWrapper, ParamFlowRule rule, int acquireCount,
                                          Object value) {
+        // 获取资源的ParameterMetric
         ParameterMetric metric = getParameterMetric(resourceWrapper);
+        // 获取该资源下，该规则下的tokenCounters和timeCounters
         CacheMap<Object, AtomicLong> tokenCounters = metric == null ? null : metric.getRuleTokenCounter(rule);
         CacheMap<Object, AtomicLong> timeCounters = metric == null ? null : metric.getRuleTimeCounter(rule);
 
@@ -150,34 +157,45 @@ public final class ParamFlowChecker {
             return false;
         }
 
+        // token够用
         while (true) {
             long currentTime = TimeUtil.currentTimeMillis();
 
+            // 对于参数的取值，先置一个设置token的时间
             AtomicLong lastAddTokenTime = timeCounters.putIfAbsent(value, new AtomicLong(currentTime));
             if (lastAddTokenTime == null) {
+                // 从来没获取过token，那么这次直接减token就行
                 // Token never added, just replenish the tokens and consume {@code acquireCount} immediately.
                 tokenCounters.putIfAbsent(value, new AtomicLong(maxCount - acquireCount));
                 return true;
             }
 
+            // 距离上一次获取token花了多久
             // Calculate the time duration since last token was added.
             long passTime = currentTime - lastAddTokenTime.get();
             // A simplified token bucket algorithm that will replenish the tokens only when statistic window has passed.
+            // 距离上次获取token的时间超过了窗口时间，则放行，直接减token就行
             if (passTime > rule.getDurationInSec() * 1000) {
+                // 老的token值如果不存在
                 AtomicLong oldQps = tokenCounters.putIfAbsent(value, new AtomicLong(maxCount - acquireCount));
                 if (oldQps == null) {
                     // Might not be accurate here.
                     lastAddTokenTime.set(currentTime);
                     return true;
                 } else {
+                    // 老的token值
                     long restQps = oldQps.get();
+                    // 过了passTime时间，应该涨上去的 count
                     long toAddCount = (passTime * tokenCount) / (rule.getDurationInSec() * 1000);
+                    // 又减去本次耗费的count
                     long newQps = toAddCount + restQps > maxCount ? (maxCount - acquireCount)
                         : (restQps + toAddCount - acquireCount);
 
+                    // 本次耗费后，如果不够，就false
                     if (newQps < 0) {
                         return false;
                     }
+                    // 本次耗费后，如果够，就耗费掉(cas设置了，就表明耗费掉了)
                     if (oldQps.compareAndSet(restQps, newQps)) {
                         lastAddTokenTime.set(currentTime);
                         return true;
@@ -185,9 +203,11 @@ public final class ParamFlowChecker {
                     Thread.yield();
                 }
             } else {
+                // 获取老token
                 AtomicLong oldQps = tokenCounters.get(value);
                 if (oldQps != null) {
                     long oldQpsValue = oldQps.get();
+                    // 本次耗费后，如果大于0，则设置，否则直接返回false
                     if (oldQpsValue - acquireCount >= 0) {
                         if (oldQps.compareAndSet(oldQpsValue, oldQpsValue - acquireCount)) {
                             return true;
@@ -203,7 +223,9 @@ public final class ParamFlowChecker {
 
     static boolean passThrottleLocalCheck(ResourceWrapper resourceWrapper, ParamFlowRule rule, int acquireCount,
                                           Object value) {
+        // 获取资源的ParameterMetric
         ParameterMetric metric = getParameterMetric(resourceWrapper);
+        // 获取该资源下，该规则下的: (value, timeRecorder)
         CacheMap<Object, AtomicLong> timeRecorderMap = metric == null ? null : metric.getRuleTimeCounter(rule);
         if (timeRecorderMap == null) {
             return true;
@@ -223,17 +245,22 @@ public final class ParamFlowChecker {
         long costTime = Math.round(1.0 * 1000 * acquireCount * rule.getDurationInSec() / tokenCount);
         while (true) {
             long currentTime = TimeUtil.currentTimeMillis();
+            // 上一次访问的时间
             AtomicLong timeRecorder = timeRecorderMap.putIfAbsent(value, new AtomicLong(currentTime));
             if (timeRecorder == null) {
                 return true;
             }
             //AtomicLong timeRecorder = timeRecorderMap.get(value);
             long lastPassTime = timeRecorder.get();
+            // 需要本次耗费后，希望的时间
             long expectedTime = lastPassTime + costTime;
 
+            // 在可接受范围内(即小于排队时间)
             if (expectedTime <= currentTime || expectedTime - currentTime < rule.getMaxQueueingTimeMs()) {
+                // 判断上一次访问时间是不是还是刚刚读的那个时间(有没有被cas过)
                 AtomicLong lastPastTimeRef = timeRecorderMap.get(value);
                 if (lastPastTimeRef.compareAndSet(lastPassTime, currentTime)) {
+                    // 没有被cas过，就把期望的时间设置为上一次访问时间，然后睡对应的等待时间
                     long waitTime = expectedTime - currentTime;
                     if (waitTime > 0) {
                         lastPastTimeRef.set(expectedTime);

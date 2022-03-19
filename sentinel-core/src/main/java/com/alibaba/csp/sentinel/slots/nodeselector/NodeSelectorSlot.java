@@ -153,6 +153,8 @@ public class NodeSelectorSlot extends AbstractLinkedProcessorSlot<Object> {
          * The answer is all {@link DefaultNode}s with same resource name share one
          * {@link ClusterNode}. See {@link ClusterBuilderSlot} for detail.
          */
+        // 1. 创建一个entry，key为context.name,value为node,以cow放入cacheMap中
+        // 2. 将node放入context中
         DefaultNode node = map.get(context.getName());
         if (node == null) {
             synchronized (this) {
@@ -170,7 +172,9 @@ public class NodeSelectorSlot extends AbstractLinkedProcessorSlot<Object> {
             }
         }
 
+        // 3. 将node设置为context的curNode
         context.setCurNode(node);
+        // 4. 链式调用
         fireEntry(context, resourceWrapper, node, count, prioritized, args);
     }
 

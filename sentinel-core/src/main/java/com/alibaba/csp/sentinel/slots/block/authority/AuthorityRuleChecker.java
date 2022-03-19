@@ -35,6 +35,7 @@ final class AuthorityRuleChecker {
             return true;
         }
 
+        // rule的limitApp以,隔开
         // Do exact match with origin name.
         int pos = rule.getLimitApp().indexOf(requester);
         boolean contain = pos > -1;

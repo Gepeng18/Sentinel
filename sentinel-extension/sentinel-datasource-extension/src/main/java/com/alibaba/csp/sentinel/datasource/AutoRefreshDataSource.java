@@ -48,6 +48,10 @@ public abstract class AutoRefreshDataSource<S, T> extends AbstractDataSource<S, 
         startTimerService();
     }
 
+    /**
+     * 每3000ms调用一次run方法。run方法里会首先会校验一下文件有没有被修改过，
+     * 如果有的话就调用loadConfig来加载配置，然后调用getProperty方法获取父类设置的property来更新配置。
+     */
     @SuppressWarnings("PMD.ThreadPoolCreationRule")
     private void startTimerService() {
         service = Executors.newScheduledThreadPool(1,
@@ -76,6 +80,9 @@ public abstract class AutoRefreshDataSource<S, T> extends AbstractDataSource<S, 
         }
     }
 
+    /**
+     * 这是一个钩子
+     */
     protected boolean isModified() {
         return true;
     }

@@ -24,6 +24,8 @@ import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRule;
  *
  * @author Eric Zhao
  */
+// Sentinel1.8中，将三种熔断策略（慢调用/异常比/异常数）封装为为两种熔断器:
+// 响应时间熔断器，与异常熔断器
 public interface CircuitBreaker {
 
     /**
@@ -31,6 +33,7 @@ public interface CircuitBreaker {
      *
      * @return associated circuit breaking rule
      */
+    // 获取降级规则
     DegradeRule getRule();
 
     /**
@@ -39,6 +42,8 @@ public interface CircuitBreaker {
      * @param context context of current invocation
      * @return {@code true} if permission was acquired and {@code false} otherwise
      */
+    // 判断请求是否可以通过
+    // 返回true，表示通过，则不用降级；否则降级
     boolean tryPass(Context context);
 
     /**
@@ -46,6 +51,7 @@ public interface CircuitBreaker {
      *
      * @return current state of the circuit breaker
      */
+    // 获取当前熔断器状态
     State currentState();
 
     /**
@@ -54,6 +60,7 @@ public interface CircuitBreaker {
      *
      * @param context context of current invocation
      */
+    // 回调方法：当请求通过并完成后会触发
     void onRequestComplete(Context context);
 
     /**
