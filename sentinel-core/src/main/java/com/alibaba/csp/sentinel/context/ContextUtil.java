@@ -127,11 +127,16 @@ public class ContextUtil {
      * 3. 构建context，并设置到threadlocal中
      */
     protected static Context trueEnter(String name, String origin) {
+        // 尝试着从ThreadLocal中获取Context
         Context context = contextHolder.get();
+        // 若ThreadLocal中没有context，则尝试着从缓存map中获取
         if (context == null) {
+            // 缓存map的key为context名称，value为EntranceNode
             Map<String, DefaultNode> localCacheNameMap = contextNameNodeMap;
+            // 获取EntranceNode——双重检测锁DCL——为了防止并发创建
             DefaultNode node = localCacheNameMap.get(name);
             if (node == null) {
+                // 若缓存map的size 大于 context数量的最大阈值，则直接返回NULL_CONTEXT
                 if (localCacheNameMap.size() > Constants.MAX_CONTEXT_NAME_SIZE) {
                     setNullContext();
                     return NULL_CONTEXT;
@@ -148,8 +153,10 @@ public class ContextUtil {
                             } else {
                                 node = new EntranceNode(new StringResourceWrapper(name, EntryType.IN), null);
                                 // Add entrance node.
+                                // 将新建的node加入root中
                                 Constants.ROOT.addChild(node);
-
+                                // 将node放入map中
+                                // 为了防止"迭代稳定性问题"，常应用于对共享集合的写操作
                                 Map<String, DefaultNode> newMap = new HashMap<>(contextNameNodeMap.size() + 1);
                                 newMap.putAll(contextNameNodeMap);
                                 newMap.put(name, node);
@@ -161,7 +168,7 @@ public class ContextUtil {
                     }
                 }
             }
-            // 1. 构建context
+            // 1. 构建context(主要就是将entranceNode包装成context)
             // 2. 设置到threadlocal中
             context = new Context(node, name);
             context.setOrigin(origin);

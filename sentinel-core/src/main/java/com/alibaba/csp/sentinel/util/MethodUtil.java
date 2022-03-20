@@ -31,6 +31,7 @@ public final class MethodUtil {
     private static final Object LOCK = new Object();
 
     /**
+     * 将method所在的类名，方法名，和参数名融合在一次，存在ConcurrentHashMap中缓存一下，以后需要就直接取
      * Parse and resolve the method name, then cache to the map.
      *
      * @param method method instance

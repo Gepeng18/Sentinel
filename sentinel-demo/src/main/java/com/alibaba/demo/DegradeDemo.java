@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DegradeDemo {
-	private static final String KEY = "abc";
+	private static final String KEY = "/";
 	private static final int threadCount = 100;
 	private static AtomicInteger pass = new AtomicInteger();
 	private static AtomicInteger block = new AtomicInteger();

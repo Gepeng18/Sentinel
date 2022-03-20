@@ -90,9 +90,10 @@ public abstract class AbstractSentinelAspectSupport {
         Object[] originArgs = pjp.getArgs();
 
         // Execute fallback function if configured.
+        // 如果配置了callback方法，则返回相应的方法实例
         Method fallbackMethod = extractFallbackMethod(pjp, fallback, fallbackClass);
         if (fallbackMethod != null) {
-            // Construct args.
+            // 构建参数列表，这里可能存在两种参数列表，带异常的和不带异常的
             int paramCount = fallbackMethod.getParameterTypes().length;
             Object[] args;
             if (paramCount == originArgs.length) {
@@ -104,13 +105,13 @@ public abstract class AbstractSentinelAspectSupport {
 
             return invoke(pjp, fallbackMethod, args);
         }
-        // If fallback is absent, we'll try the defaultFallback if provided.
+        // 如果没有找到callback，我们将尝试defaultFallback(如果提供的话)
         return handleDefaultFallback(pjp, defaultFallback, fallbackClass, ex);
     }
 
     protected Object handleDefaultFallback(ProceedingJoinPoint pjp, String defaultFallback,
                                            Class<?>[] fallbackClass, Throwable ex) throws Throwable {
-        // Execute the default fallback function if configured.
+        // 如果配置了，则执行默认的callback函数。
         Method fallbackMethod = extractDefaultFallbackMethod(pjp, defaultFallback, fallbackClass);
         if (fallbackMethod != null) {
             // Construct args.
@@ -175,13 +176,17 @@ public abstract class AbstractSentinelAspectSupport {
         if (StringUtil.isBlank(fallbackName)) {
             return null;
         }
+        // fallbackClass 取传入fallbackClass数组的第一个类，或者targetClazz
         boolean mustStatic = locationClass != null && locationClass.length >= 1;
         Class<?> clazz = mustStatic ? locationClass[0] : pjp.getTarget().getClass();
+
+        // 从缓存中根据类和方法名找到相应的方法包装类
         MethodWrapper m = ResourceMetadataRegistry.lookupFallback(clazz, fallbackName);
         if (m == null) {
             // First time, resolve the fallback.
+            // 先找与注解中的各项参数匹配的方法
             Method method = resolveFallbackInternal(pjp, fallbackName, clazz, mustStatic);
-            // Cache the method instance.
+            // 缓存方法实例
             ResourceMetadataRegistry.updateFallbackFor(clazz, fallbackName, method);
             return method;
         }
@@ -191,8 +196,11 @@ public abstract class AbstractSentinelAspectSupport {
         return m.getMethod();
     }
 
+    // 和extractFallbackMethod函数基本一样，只是这里查找默认的callback函数
     private Method extractDefaultFallbackMethod(ProceedingJoinPoint pjp, String defaultFallback,
                                                 Class<?>[] locationClass) {
+        // 如果传入的defaultFallback是空，则找 pjp 的targetClass 配置的 defaultFallback
+        // 如果传入的locationClass是空，则找  pjp 的targetClass 配置的 fallbackClass
         if (StringUtil.isBlank(defaultFallback)) {
             SentinelResource annotationClass = pjp.getTarget().getClass().getAnnotation(SentinelResource.class);
             if (annotationClass != null && StringUtil.isNotBlank(annotationClass.defaultFallback())) {
@@ -204,6 +212,7 @@ public abstract class AbstractSentinelAspectSupport {
                 return null;
             }
         }
+        // 找相应的defaultFallback的方法
         boolean mustStatic = locationClass != null && locationClass.length >= 1;
         Class<?> clazz = mustStatic ? locationClass[0] : pjp.getTarget().getClass();
 
@@ -234,8 +243,10 @@ public abstract class AbstractSentinelAspectSupport {
 
     private Method resolveFallbackInternal(ProceedingJoinPoint pjp, /*@NonNull*/ String name, Class<?> clazz,
                                            boolean mustStatic) {
+        // 1. 获取pjp所在的方法
         Method originMethod = resolveMethod(pjp);
         // Fallback function allows two kinds of parameter list.
+        // 2. 获取参数列表，并且添加一个参数，最后一个参数类型是异常
         Class<?>[] defaultParamTypes = originMethod.getParameterTypes();
         Class<?>[] paramTypesWithException = Arrays.copyOf(defaultParamTypes, defaultParamTypes.length + 1);
         paramTypesWithException[paramTypesWithException.length - 1] = Throwable.class;
@@ -243,6 +254,7 @@ public abstract class AbstractSentinelAspectSupport {
         Method method = findMethod(mustStatic, clazz, name, originMethod.getReturnType(), defaultParamTypes);
         // If fallback matching the origin method is absent, we then try to find the other one.
         if (method == null) {
+            // 3. 原始方法没找到，则将参数类型加上异常后，再找一遍
             method = findMethod(mustStatic, clazz, name, originMethod.getReturnType(), paramTypesWithException);
         }
         return method;
@@ -290,8 +302,10 @@ public abstract class AbstractSentinelAspectSupport {
 
     private Method findMethod(boolean mustStatic, Class<?> clazz, String name, Class<?> returnType,
                               Class<?>... parameterTypes) {
+        // 1. 获取传入的类的所有方法
         Method[] methods = clazz.getDeclaredMethods();
         for (Method method : methods) {
+            // 1.1. 方法名一样且返回类型一样且参数列表一样，就返回该方法
             if (name.equals(method.getName()) && checkStatic(mustStatic, method)
                 && returnType.isAssignableFrom(method.getReturnType())
                 && Arrays.equals(parameterTypes, method.getParameterTypes())) {
@@ -300,11 +314,13 @@ public abstract class AbstractSentinelAspectSupport {
                 return method;
             }
         }
-        // Current class not found, find in the super classes recursively.
+        // 2. 本类中没找到相应的方法，就递归地在超类中找相应的方法
         Class<?> superClass = clazz.getSuperclass();
         if (superClass != null && !Object.class.equals(superClass)) {
+            // 2.1 第二个参数传入超类
             return findMethod(mustStatic, superClass, name, returnType, parameterTypes);
         } else {
+            // 递归终止条件
             String methodType = mustStatic ? " static" : "";
             RecordLog.warn("Cannot find{} method [{}] in class [{}] with parameters {}",
                 methodType, name, clazz.getCanonicalName(), Arrays.toString(parameterTypes));
@@ -317,13 +333,13 @@ public abstract class AbstractSentinelAspectSupport {
     }
 
     protected Method resolveMethod(ProceedingJoinPoint joinPoint) {
-        MethodSignature signature = (MethodSignature)joinPoint.getSignature();
-        Class<?> targetClass = joinPoint.getTarget().getClass();
-
-        Method method = getDeclaredMethodFor(targetClass, signature.getName(),
-            signature.getMethod().getParameterTypes());
+        MethodSignature methodSignature = (MethodSignature)joinPoint.getSignature();
+        Class<?> targetClass = joinPoint.getTarget().getClass();  // 注解即将注入的那个类
+        // 获取方法的class
+        Method method = getDeclaredMethodFor(targetClass, methodSignature.getName(),
+            methodSignature.getMethod().getParameterTypes());
         if (method == null) {
-            throw new IllegalStateException("Cannot resolve target method: " + signature.getMethod().getName());
+            throw new IllegalStateException("Cannot resolve target method: " + methodSignature.getMethod().getName());
         }
         return method;
     }

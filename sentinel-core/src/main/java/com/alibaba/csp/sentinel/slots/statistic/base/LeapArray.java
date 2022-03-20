@@ -63,12 +63,12 @@ public abstract class LeapArray<T> {
         AssertUtil.isTrue(intervalInMs > 0, "total time interval of the sliding window should be positive");
         AssertUtil.isTrue(intervalInMs % sampleCount == 0, "time span needs to be evenly divided");
 
-        this.windowLengthInMs = intervalInMs / sampleCount;
-        this.intervalInMs = intervalInMs;
-        this.intervalInSecond = intervalInMs / 1000.0;
-        this.sampleCount = sampleCount;
+        this.windowLengthInMs = intervalInMs / sampleCount;  // 每个采样窗口的时间间隔
+        this.intervalInMs = intervalInMs;   // 总的采样区间(毫秒)
+        this.intervalInSecond = intervalInMs / 1000.0;  // 总的采样区间(秒)
+        this.sampleCount = sampleCount;  // 采样区间数
 
-        this.array = new AtomicReferenceArray<>(sampleCount);
+        this.array = new AtomicReferenceArray<>(sampleCount);   // 采样数组
     }
 
     /**

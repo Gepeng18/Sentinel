@@ -104,8 +104,14 @@ public abstract class AbstractCircuitBreaker implements CircuitBreaker {
         return false;
     }
 
+    /**
+     * 那探测和开启状态都允许请求通过，在“熔断降级说明”文章中知道，探测状态只允许一个请求通过，这个是在哪里控制的呢？
+     * see {@link ExceptionCircuitBreaker#onRequestComplete}
+     */
     protected boolean fromOpenToHalfOpen(Context context) {
+        // 如果开启状态超过了窗口时间，则尝试改为半开启状态
         if (currentState.compareAndSet(State.OPEN, State.HALF_OPEN)) {
+            // 调用所有observers的onStateChange方法
             notifyObservers(State.OPEN, State.HALF_OPEN, null);
             Entry entry = context.getCurEntry();
             entry.whenTerminate(new BiConsumer<Context, Entry>() {
@@ -134,6 +140,7 @@ public abstract class AbstractCircuitBreaker implements CircuitBreaker {
 
     protected boolean fromHalfOpenToOpen(double snapshotValue) {
         if (currentState.compareAndSet(State.HALF_OPEN, State.OPEN)) {
+            // 设置了nextRetryTimestamp时间
             updateNextRetryTimestamp();
             notifyObservers(State.HALF_OPEN, State.OPEN, snapshotValue);
             return true;

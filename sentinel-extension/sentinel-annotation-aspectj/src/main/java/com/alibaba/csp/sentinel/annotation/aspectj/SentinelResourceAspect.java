@@ -32,13 +32,15 @@ import java.lang.reflect.Method;
  *
  * @author Eric Zhao
  */
-@Aspect
+@Aspect  // aspect切面
 public class SentinelResourceAspect extends AbstractSentinelAspectSupport {
 
+    // 指定切入点为环绕通知 around advice
     @Pointcut("@annotation(com.alibaba.csp.sentinel.annotation.SentinelResource)")
     public void sentinelResourceAnnotationPointcut() {
     }
 
+    // 环绕通知
     @Around("sentinelResourceAnnotationPointcut()")
     public Object invokeResourceWithSentinel(ProceedingJoinPoint pjp) throws Throwable {
         Method originMethod = resolveMethod(pjp);
@@ -48,21 +50,30 @@ public class SentinelResourceAspect extends AbstractSentinelAspectSupport {
             // Should not go through here.
             throw new IllegalStateException("Wrong state for SentinelResource annotation");
         }
+        // resourceName即为注解中的value值，如果注解value为空，则为自定义的类名+方法名+参数名
         String resourceName = getResourceName(annotation.value(), originMethod);
-        EntryType entryType = annotation.entryType();
-        int resourceType = annotation.resourceType();
+        EntryType entryType = annotation.entryType();  // 注解的entry类型，in/out
+        int resourceType = annotation.resourceType();  // 注解的资源类型
         Entry entry = null;
         try {
+            // 要织入，增强的功能
             entry = SphU.entry(resourceName, resourceType, entryType, pjp.getArgs());
+            // 调用目标
             return pjp.proceed();
         } catch (BlockException ex) {
+            // 处理阻塞异常,这就是鼎鼎大名的限流策略
             return handleBlockException(pjp, annotation, ex);
         } catch (Throwable ex) {
+            // 处理代码中抛出的错误，这里就是鼎鼎大名的降级策略
             Class<? extends Throwable>[] exceptionsToIgnore = annotation.exceptionsToIgnore();
             // The ignore list will be checked first.
+            // 注解中指定了一些可以忽视的异常，检测后，抛出异常
+            // 所以我理解，这里注解的忽视异常意思是让sentinel忽视，别处理，直接抛出来
             if (exceptionsToIgnore.length > 0 && exceptionBelongsTo(ex, exceptionsToIgnore)) {
                 throw ex;
             }
+            // 注解中指定了一些需要追踪的异常，检测到后，进行处理
+            // 这里分为配置了callBack以及defaultCallBack
             if (exceptionBelongsTo(ex, annotation.exceptionsToTrace())) {
                 traceException(ex);
                 return handleFallback(pjp, annotation, ex);

@@ -170,8 +170,10 @@ public final class DegradeRuleManager {
      */
     private static CircuitBreaker newCircuitBreakerFrom(/*@Valid*/ DegradeRule rule) {
         switch (rule.getGrade()) {
+            // 慢调用使用ResponseTimeCircuitBreaker
             case RuleConstant.DEGRADE_GRADE_RT:
                 return new ResponseTimeCircuitBreaker(rule);
+            // 异常数和异常比例使用ExceptionCircuitBreaker
             case RuleConstant.DEGRADE_GRADE_EXCEPTION_RATIO:
             case RuleConstant.DEGRADE_GRADE_EXCEPTION_COUNT:
                 return new ExceptionCircuitBreaker(rule);
@@ -204,6 +206,10 @@ public final class DegradeRuleManager {
     private static class RulePropertyListener implements PropertyListener<List<DegradeRule>> {
 
         private synchronized void reloadFrom(List<DegradeRule> list) {
+            /**
+             * 会将DegradeRule转换为断路器CircuitBreaker(根据不同的规则去创建breaker，创建代码见
+             * see {@link this#newCircuitBreakerFrom}
+             */
             Map<String, List<CircuitBreaker>> cbs = buildCircuitBreakers(list);
             Map<String, Set<DegradeRule>> rm = new HashMap<>(cbs.size());
 
@@ -239,6 +245,7 @@ public final class DegradeRuleManager {
                 return cbMap;
             }
             for (DegradeRule rule : list) {
+                // 校验参数是否满足条件(很多种参数组合)
                 if (!isValidRule(rule)) {
                     RecordLog.warn("[DegradeRuleManager] Ignoring invalid rule when loading new rules: {}", rule);
                     continue;
@@ -247,6 +254,7 @@ public final class DegradeRuleManager {
                 if (StringUtil.isBlank(rule.getLimitApp())) {
                     rule.setLimitApp(RuleConstant.LIMIT_APP_DEFAULT);
                 }
+
                 CircuitBreaker cb = getExistingSameCbOrNew(rule);
                 if (cb == null) {
                     RecordLog.warn("[DegradeRuleManager] Unknown circuit breaking strategy, ignoring: {}", rule);

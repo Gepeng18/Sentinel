@@ -94,6 +94,7 @@ class CtEntry extends Entry {
                 String curEntryNameInContext = context.getCurEntry() == null ? null
                     : context.getCurEntry().getResourceWrapper().getName();
                 // Clean previous call stack.
+                // 递归调用e的exit和e.parent的exit
                 CtEntry e = (CtEntry) context.getCurEntry();
                 while (e != null) {
                     e.exit(count, args);
@@ -105,6 +106,7 @@ class CtEntry extends Entry {
                 throw new ErrorEntryFreeException(errorMessage);
             } else {
                 // Go through the onExit hook of all slots.
+                // 调用每个slot的exit方法
                 if (chain != null) {
                     chain.exit(context, resourceWrapper, count, args);
                 }
@@ -119,7 +121,7 @@ class CtEntry extends Entry {
                 if (parent == null) {
                     // Default context (auto entered) will be exited automatically.
                     if (ContextUtil.isDefaultContext(context)) {
-                        ContextUtil.exit();
+                        ContextUtil.exit();  // 从threadLocal中移除
                     }
                 }
                 // Clean the reference of context in current entry to avoid duplicate exit.

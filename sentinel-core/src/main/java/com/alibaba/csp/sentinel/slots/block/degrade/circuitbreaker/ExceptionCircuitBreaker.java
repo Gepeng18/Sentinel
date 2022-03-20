@@ -41,6 +41,7 @@ public class ExceptionCircuitBreaker extends AbstractCircuitBreaker {
     private final LeapArray<SimpleErrorCounter> stat;
 
     public ExceptionCircuitBreaker(DegradeRule rule) {
+        // 默认采样窗口sampleCount为1，统计区间intervalInMs为1秒。
         this(rule, new SimpleErrorCounterLeapArray(1, rule.getStatIntervalMs()));
     }
 
@@ -61,6 +62,10 @@ public class ExceptionCircuitBreaker extends AbstractCircuitBreaker {
         stat.currentWindow().value().reset();
     }
 
+    /**
+     * 在调用Entry#exit()时，会触发插槽链条的退出调用。具体到熔断降级DegradeSlot#exit方法。
+     * 通过本方法回调熔断器执行状态切换。
+     */
     @Override
     public void onRequestComplete(Context context) {
         Entry entry = context.getCurEntry();
@@ -77,36 +82,46 @@ public class ExceptionCircuitBreaker extends AbstractCircuitBreaker {
         handleStateChangeWhenThresholdExceeded(error);
     }
 
+    /**
+     * 请求退出时，被执行
+     */
     private void handleStateChangeWhenThresholdExceeded(Throwable error) {
+        // 1. 如果熔断器开启，则继续熔断
         if (currentState.get() == State.OPEN) {
             return;
         }
-        
+        // 2. 半开启状态
         if (currentState.get() == State.HALF_OPEN) {
             // In detecting request
             if (error == null) {
+                // 没有error，熔断器由半开启转为关闭，这时候允许所有请求通过
                 fromHalfOpenToClose();
             } else {
+                // 半开启状态下，还是发生了错误，这时候就设置为open，熔断所有请求
                 fromHalfOpenToOpen(1.0d);
             }
             return;
         }
-        
+
+        // 3. 熔断器关闭的逻辑
         List<SimpleErrorCounter> counters = stat.values();
         long errCount = 0;
         long totalCount = 0;
         for (SimpleErrorCounter counter : counters) {
+            // 3.1 计算错误请求数量和请求总数
             errCount += counter.errorCount.sum();
             totalCount += counter.totalCount.sum();
         }
+        // 3.2 如果在最小请求数范围内就不发生熔断
         if (totalCount < minRequestAmount) {
             return;
         }
         double curCount = errCount;
         if (strategy == DEGRADE_GRADE_EXCEPTION_RATIO) {
-            // Use errorRatio
+            // 3.3 计算错误请求比例
             curCount = errCount * 1.0d / totalCount;
         }
+        // 3.4 错误数/异常比例超过了阈值，则熔断器由关闭转换为开启
         if (curCount > threshold) {
             transformToOpen(curCount);
         }

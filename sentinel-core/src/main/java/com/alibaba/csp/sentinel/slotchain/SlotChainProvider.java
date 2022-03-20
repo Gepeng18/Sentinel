@@ -36,6 +36,7 @@ public final class SlotChainProvider {
      * @return new created slot chain
      */
     public static ProcessorSlotChain newSlotChain() {
+        // 若builder不为null，则直接使用builder构建一个chain，否则先创建一个builder
         if (slotChainBuilder != null) {
             return slotChainBuilder.build();
         }
@@ -43,6 +44,7 @@ public final class SlotChainProvider {
         // 根据spi初始化slotChainBuilder，默认是DefaultSlotChainBuilder
         slotChainBuilder = SpiLoader.of(SlotChainBuilder.class).loadFirstInstanceOrDefault();
 
+        // 若通过SPI方式未能创建builder(如配置文件不存在)，则手工new一个DefaultSlotChainBuilder
         if (slotChainBuilder == null) {
             // Should not go through here.
             RecordLog.warn("[SlotChainProvider] Wrong state when resolving slot chain builder, using default");
@@ -51,6 +53,7 @@ public final class SlotChainProvider {
             RecordLog.info("[SlotChainProvider] Global slot chain builder resolved: {}",
                 slotChainBuilder.getClass().getCanonicalName());
         }
+        // 构建一个chain
         return slotChainBuilder.build();
     }
 

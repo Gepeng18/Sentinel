@@ -53,7 +53,10 @@ public class DegradeSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
         if (circuitBreakers == null || circuitBreakers.isEmpty()) {
             return;
         }
-        // 以此执行降级策略，判断是否需要降级
+        /**
+         * 以此执行降级策略，判断是否需要降级
+         * see {@link DegradeRuleManager#newCircuitBreakerFrom}
+         */
         for (CircuitBreaker cb : circuitBreakers) {
             // 若没有通过当前熔断器，则直接抛出异常
             if (!cb.tryPass(context)) {

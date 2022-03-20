@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.csp.sentinel.demo.degrade;
+package com.alibaba.demo.degrade;
 
 import com.alibaba.csp.sentinel.Entry;
 import com.alibaba.csp.sentinel.SphU;
-import com.alibaba.csp.sentinel.Tracer;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRule;
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRuleManager;
@@ -33,50 +32,60 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * Run this demo, and the output will be like:
+ *
+ * <pre>
+ * 1529399827825,total:0, pass:0, block:0
+ * 1529399828825,total:4263, pass:100, block:4164
+ * 1529399829825,total:19179, pass:4, block:19176 // circuit breaker opens
+ * 1529399830824,total:19806, pass:0, block:19806
+ * 1529399831825,total:19198, pass:0, block:19198
+ * 1529399832824,total:19481, pass:0, block:19481
+ * 1529399833826,total:19241, pass:0, block:19241
+ * 1529399834826,total:17276, pass:0, block:17276
+ * 1529399835826,total:18722, pass:0, block:18722
+ * 1529399836826,total:19490, pass:0, block:19492
+ * 1529399837828,total:19355, pass:0, block:19355
+ * 1529399838827,total:11388, pass:0, block:11388
+ * 1529399839829,total:14494, pass:104, block:14390 // After 10 seconds, the system restored
+ * 1529399840854,total:18505, pass:0, block:18505
+ * 1529399841854,total:19673, pass:0, block:19676
+ * </pre>
+ *
  * @author jialiang.linjl
  * @author Eric Zhao
  */
-public class ExceptionRatioCircuitBreakerDemo {
+public class SlowRatioCircuitBreakerDemo {
 
-    private static final String KEY = "some_service";
+    private static final String KEY = "some_method";
+
+    private static volatile boolean stop = false;
+    private static int seconds = 120;
 
     private static AtomicInteger total = new AtomicInteger();
     private static AtomicInteger pass = new AtomicInteger();
     private static AtomicInteger block = new AtomicInteger();
-    private static AtomicInteger bizException = new AtomicInteger();
-
-    private static volatile boolean stop = false;
-    private static int seconds = 120;
 
     public static void main(String[] args) throws Exception {
         initDegradeRule();
         registerStateChangeObserver();
         startTick();
 
-        final int concurrency = 8;
+        int concurrency = 8;
         for (int i = 0; i < concurrency; i++) {
             Thread entryThread = new Thread(() -> {
                 while (true) {
                     Entry entry = null;
                     try {
                         entry = SphU.entry(KEY);
-                        sleep(ThreadLocalRandom.current().nextInt(5, 10));
-                        pass.addAndGet(1);
-
-                        // Error probability is 45%
-                        if (ThreadLocalRandom.current().nextInt(0, 100) > 55) {
-                            // biz code raise an exception.
-                            throw new RuntimeException("oops");
-                        }
+                        pass.incrementAndGet();
+                        // RT: [40ms, 60ms)
+                        sleep(ThreadLocalRandom.current().nextInt(40, 60));
                     } catch (BlockException e) {
-                        block.addAndGet(1);
+                        block.incrementAndGet();
                         sleep(ThreadLocalRandom.current().nextInt(5, 10));
-                    } catch (Throwable t) {
-                        bizException.incrementAndGet();
-                        // It's required to record exception here manually.
-                        Tracer.traceEntry(t, entry);
                     } finally {
-                        total.addAndGet(1);
+                        total.incrementAndGet();
                         if (entry != null) {
                             entry.exit();
                         }
@@ -88,6 +97,7 @@ public class ExceptionRatioCircuitBreakerDemo {
         }
     }
 
+    // 在AbstractCircuitBreaker中，每次状态改变都会执行notifyObservers方法，即执行该方法
     private static void registerStateChangeObserver() {
         EventObserverRegistry.getInstance().addStateChangeObserver("logging",
             (prevState, newState, rule, snapshotValue) -> {
@@ -104,14 +114,17 @@ public class ExceptionRatioCircuitBreakerDemo {
     private static void initDegradeRule() {
         List<DegradeRule> rules = new ArrayList<>();
         DegradeRule rule = new DegradeRule(KEY)
-            .setGrade(CircuitBreakerStrategy.ERROR_RATIO.getType())
-            // Set ratio threshold to 50%.
-            .setCount(0.5d)
-            .setStatIntervalMs(30000)
-            .setMinRequestAmount(50)
+            .setGrade(CircuitBreakerStrategy.SLOW_REQUEST_RATIO.getType())
+            // Max allowed response time
+            .setCount(50)
             // Retry timeout (in second)
-            .setTimeWindow(10);
+            .setTimeWindow(10)
+            // Circuit breaker opens when slow request ratio > 60%
+            .setSlowRatioThreshold(0.6)
+            .setMinRequestAmount(100)
+            .setStatIntervalMs(20000);
         rules.add(rule);
+
         DegradeRuleManager.loadRules(rules);
         System.out.println("Degrade rule loaded: " + rules);
     }
@@ -140,7 +153,7 @@ public class ExceptionRatioCircuitBreakerDemo {
             long oldTotal = 0;
             long oldPass = 0;
             long oldBlock = 0;
-            long oldBizException = 0;
+
             while (!stop) {
                 sleep(1000);
 
@@ -156,22 +169,18 @@ public class ExceptionRatioCircuitBreakerDemo {
                 long oneSecondBlock = globalBlock - oldBlock;
                 oldBlock = globalBlock;
 
-                long globalBizException = bizException.get();
-                long oneSecondBizException = globalBizException - oldBizException;
-                oldBizException = globalBizException;
+                System.out.println(TimeUtil.currentTimeMillis() + ", total:" + oneSecondTotal
+                    + ", pass:" + oneSecondPass + ", block:" + oneSecondBlock);
 
-                System.out.println(TimeUtil.currentTimeMillis() + ", oneSecondTotal:" + oneSecondTotal
-                    + ", oneSecondPass:" + oneSecondPass
-                    + ", oneSecondBlock:" + oneSecondBlock
-                    + ", oneSecondBizException:" + oneSecondBizException);
                 if (seconds-- <= 0) {
                     stop = true;
                 }
             }
+
             long cost = System.currentTimeMillis() - start;
             System.out.println("time cost: " + cost + " ms");
             System.out.println("total: " + total.get() + ", pass:" + pass.get()
-                + ", block:" + block.get() + ", bizException:" + bizException.get());
+                + ", block:" + block.get());
             System.exit(0);
         }
     }
