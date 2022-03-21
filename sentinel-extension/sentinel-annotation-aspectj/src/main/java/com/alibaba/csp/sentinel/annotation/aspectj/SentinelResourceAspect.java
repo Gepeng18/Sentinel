@@ -57,14 +57,17 @@ public class SentinelResourceAspect extends AbstractSentinelAspectSupport {
         Entry entry = null;
         try {
             // 要织入，增强的功能
+            // 将注解的value(resourceName)，resourceType，entryType 以及 参数传进去
             entry = SphU.entry(resourceName, resourceType, entryType, pjp.getArgs());
             // 调用目标
             return pjp.proceed();
         } catch (BlockException ex) {
-            // 处理阻塞异常,这就是鼎鼎大名的限流策略
+            // 处理阻塞异常,这就是鼎鼎大名的限流策略,sentinel的目的是抛出BlockException，
+            // 然后由下面的代码找到SentinelResource中对应的阻塞处理器，然后执行相应操作
             return handleBlockException(pjp, annotation, ex);
         } catch (Throwable ex) {
-            // 处理代码中抛出的错误，这里就是鼎鼎大名的降级策略
+            // 处理代码中抛出的错误，这里就是鼎鼎大名的降级策略,sentinel的目的是抛出Throwable，
+            // 然后由下面的代码找到SentinelResource中对应的fallBack处理器，然后执行相应操作
             Class<? extends Throwable>[] exceptionsToIgnore = annotation.exceptionsToIgnore();
             // The ignore list will be checked first.
             // 注解中指定了一些可以忽视的异常，检测后，抛出异常
@@ -73,13 +76,13 @@ public class SentinelResourceAspect extends AbstractSentinelAspectSupport {
                 throw ex;
             }
             // 注解中指定了一些需要追踪的异常，检测到后，进行处理
-            // 这里分为配置了callBack以及defaultCallBack
+            // 这里分为配置了fallBack以及defaultCallBack
             if (exceptionBelongsTo(ex, annotation.exceptionsToTrace())) {
                 traceException(ex);
                 return handleFallback(pjp, annotation, ex);
             }
 
-            // No fallback function can handle the exception, so throw it out.
+            // 没有fallBack函数可以处理异常，所以将其抛出。
             throw ex;
         } finally {
             if (entry != null) {

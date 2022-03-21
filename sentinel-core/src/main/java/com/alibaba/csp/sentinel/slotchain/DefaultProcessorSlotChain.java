@@ -20,6 +20,7 @@ import com.alibaba.csp.sentinel.context.Context;
 /**
  * @author qinan.qn
  * @author jialiang.linjl
+ * 是一个双向链表，存储所有的slot
  */
 public class DefaultProcessorSlotChain extends ProcessorSlotChain {
 

@@ -33,18 +33,19 @@ public final class SlotChainProvider {
      * The load and pick process is not thread-safe, but it's okay since the method should be only invoked
      * via {@code lookProcessChain} in {@link com.alibaba.csp.sentinel.CtSph} under lock.
      *
+     * 创建一个 chain (双向链表)，然后将很多 slot(ProcessorSlot)add 到这个 chain 中
      * @return new created slot chain
      */
     public static ProcessorSlotChain newSlotChain() {
-        // 若builder不为null，则直接使用builder构建一个chain，否则先创建一个builder
+        // 1. 若builder不为null(直接创建过)，则直接使用builder构建一个chain，否则到第2步创建一个builder
         if (slotChainBuilder != null) {
             return slotChainBuilder.build();
         }
 
-        // 根据spi初始化slotChainBuilder，默认是DefaultSlotChainBuilder
+        // 2. 根据spi初始化slotChainBuilder，默认是DefaultSlotChainBuilder
         slotChainBuilder = SpiLoader.of(SlotChainBuilder.class).loadFirstInstanceOrDefault();
 
-        // 若通过SPI方式未能创建builder(如配置文件不存在)，则手工new一个DefaultSlotChainBuilder
+        // 3. 若通过SPI方式未能创建builder(如配置文件不存在)，则手工new一个DefaultSlotChainBuilder
         if (slotChainBuilder == null) {
             // Should not go through here.
             RecordLog.warn("[SlotChainProvider] Wrong state when resolving slot chain builder, using default");

@@ -126,7 +126,7 @@ public abstract class AbstractSentinelAspectSupport {
     protected Object handleBlockException(ProceedingJoinPoint pjp, SentinelResource annotation, BlockException ex)
         throws Throwable {
 
-        // Execute block handler if configured.
+        // 1. 如果配置了，则执行阻塞处理逻辑
         Method blockHandlerMethod = extractBlockHandlerMethod(pjp, annotation.blockHandler(),
             annotation.blockHandlerClass());
         if (blockHandlerMethod != null) {
@@ -137,7 +137,7 @@ public abstract class AbstractSentinelAspectSupport {
             return invoke(pjp, blockHandlerMethod, args);
         }
 
-        // If no block handler is present, then go to fallback.
+        // 2. 如果没有阻塞处理器，则执行降级策略
         return handleFallback(pjp, annotation, ex);
     }
 
@@ -260,11 +260,18 @@ public abstract class AbstractSentinelAspectSupport {
         return method;
     }
 
+    /**
+     * @param pjp
+     * @param name annotation.blockHandler()
+     * @param locationClass annotation.blockHandlerClass()
+     * @return
+     */
     private Method extractBlockHandlerMethod(ProceedingJoinPoint pjp, String name, Class<?>[] locationClass) {
         if (StringUtil.isBlank(name)) {
             return null;
         }
 
+        // 1. 获取阻塞执行器的类，可能是第一个，可能是pjp的targetClazz
         boolean mustStatic = locationClass != null && locationClass.length >= 1;
         Class<?> clazz;
         if (mustStatic) {
@@ -273,11 +280,13 @@ public abstract class AbstractSentinelAspectSupport {
             // By default current class.
             clazz = pjp.getTarget().getClass();
         }
+        // 2. 从缓存中找到对应的method
         MethodWrapper m = ResourceMetadataRegistry.lookupBlockHandler(clazz, name);
         if (m == null) {
             // First time, resolve the block handler.
+            // 3. 缓存中没有找到，则解析相应的方法
             Method method = resolveBlockHandlerInternal(pjp, name, clazz, mustStatic);
-            // Cache the method instance.
+            // 4. 放入缓存中
             ResourceMetadataRegistry.updateBlockHandlerFor(clazz, name, method);
             return method;
         }
@@ -287,12 +296,22 @@ public abstract class AbstractSentinelAspectSupport {
         return m.getMethod();
     }
 
+    /**
+     * @param pjp
+     * @param name annotation.blockHandler()
+     * @param clazz 阻塞handler的类，可能是第一个，可能是pjp的targetClazz
+     * @param mustStatic
+     */
     private Method resolveBlockHandlerInternal(ProceedingJoinPoint pjp, /*@NonNull*/ String name, Class<?> clazz,
                                                boolean mustStatic) {
+        // 1. 获取pjp织入的方法
         Method originMethod = resolveMethod(pjp);
+        // 2. 给pjp织入的方法的列表增加一个参数，即异常参数
         Class<?>[] originList = originMethod.getParameterTypes();
         Class<?>[] parameterTypes = Arrays.copyOf(originList, originList.length + 1);
         parameterTypes[parameterTypes.length - 1] = BlockException.class;
+        // 1. 根据传入的clazz类找到其所有方法，然后判断如果方法名和name一样且返回类型、参数列表和originMethod一样，就返回该方法
+        // 2. 本类中没找到相应的方法，就递归地在超类中找相应的方法
         return findMethod(mustStatic, clazz, name, originMethod.getReturnType(), parameterTypes);
     }
 
@@ -300,6 +319,10 @@ public abstract class AbstractSentinelAspectSupport {
         return !mustStatic || isStatic(method);
     }
 
+    /**
+     * @param name annotation.blockHandler()
+     * @param clazz 阻塞handler的类，可能是第一个，可能是pjp的targetClazz
+     */
     private Method findMethod(boolean mustStatic, Class<?> clazz, String name, Class<?> returnType,
                               Class<?>... parameterTypes) {
         // 1. 获取传入的类的所有方法
@@ -332,6 +355,9 @@ public abstract class AbstractSentinelAspectSupport {
         return Modifier.isStatic(method.getModifiers());
     }
 
+    /**
+     * 获取pjp织入的方法
+     */
     protected Method resolveMethod(ProceedingJoinPoint joinPoint) {
         MethodSignature methodSignature = (MethodSignature)joinPoint.getSignature();
         Class<?> targetClass = joinPoint.getTarget().getClass();  // 注解即将注入的那个类

@@ -39,7 +39,7 @@ public class DefaultSlotChainBuilder implements SlotChainBuilder {
     public ProcessorSlotChain build() {
         ProcessorSlotChain chain = new DefaultProcessorSlotChain();
 
-        // 通过SPI方式构建Slot(Slot就是sentinel的灵魂啊)
+        // 1. 通过SPI方式构建Slot(Slot就是sentinel的灵魂啊)
         List<ProcessorSlot> sortedSlotList = SpiLoader.of(ProcessorSlot.class).loadInstanceListSorted();
         for (ProcessorSlot slot : sortedSlotList) {
             if (!(slot instanceof AbstractLinkedProcessorSlot)) {
@@ -47,6 +47,7 @@ public class DefaultSlotChainBuilder implements SlotChainBuilder {
                 continue;
             }
 
+            // 2. 将这些slot存储到chain这个双向链表中
             chain.addLast((AbstractLinkedProcessorSlot<?>) slot);
         }
 

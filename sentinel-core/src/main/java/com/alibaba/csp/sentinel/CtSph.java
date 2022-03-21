@@ -139,7 +139,7 @@ public class CtSph implements Sph {
             return new CtEntry(resourceWrapper, null, context);
         }
 
-        // 创建一系列功能插槽
+        // 创建一系列功能插槽，一个ResourceWrapper对应于一个chain,一个chain中包含多个slot
         // 如果超过了插槽的最大数量，那么会返回null
         ProcessorSlot<Object> chain = lookProcessChain(resourceWrapper);
 
@@ -202,12 +202,13 @@ public class CtSph implements Sph {
      * @param resourceWrapper target resource
      * @return {@link ProcessorSlotChain} of the resource
      */
+    // chain也有一个缓存，Map<ResourceWrapper, ProcessorSlotChain>
     ProcessorSlot<Object> lookProcessChain(ResourceWrapper resourceWrapper) {
-        // 根据resourceWrapper获取插槽
+        // 1. 根据resourceWrapper获取插槽
         // 缓存map的key为资源，value为其相关的SlotChain
         ProcessorSlotChain chain = chainMap.get(resourceWrapper);
         // DCL
-        // 若缓存中没有相关的SlotChain，则创建一个并放入到缓存
+        // 2. 若缓存中没有相关的SlotChain，则创建一个并放入到缓存
         if (chain == null) {
             synchronized (LOCK) {
                 chain = chainMap.get(resourceWrapper);
@@ -218,7 +219,7 @@ public class CtSph implements Sph {
                         return null;
                     }
 
-                    // 通过SlotChainProvider创建一个插槽，copyOnWrite 放进chainMap
+                    // 2.1 通过SlotChainProvider创建一个插槽，copyOnWrite 放进chainMap
                     chain = SlotChainProvider.newSlotChain();
                     Map<ResourceWrapper, ProcessorSlotChain> newMap = new HashMap<ResourceWrapper, ProcessorSlotChain>(
                         chainMap.size() + 1);

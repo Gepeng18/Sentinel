@@ -49,6 +49,10 @@ class CtEntry extends Entry {
         setUpEntryFor(context);
     }
 
+    /**
+     * 将传入的context作为CtEntry的父亲，CtEntry作为context的孩子
+     * 并将本CtEntry作为context的curEntry
+     */
     private void setUpEntryFor(Context context) {
         // The entry should not be associated to NullContext.
         if (context instanceof NullContext) {

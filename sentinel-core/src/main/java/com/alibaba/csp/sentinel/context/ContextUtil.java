@@ -127,9 +127,11 @@ public class ContextUtil {
      * 3. 构建context，并设置到threadlocal中
      */
     protected static Context trueEnter(String name, String origin) {
-        // 尝试着从ThreadLocal中获取Context
+        // 1. 尝试着从ThreadLocal中获取Context
         Context context = contextHolder.get();
-        // 若ThreadLocal中没有context，则尝试着从缓存map中获取
+        // 2. 若ThreadLocal中没有context，则尝试着从缓存map中获取
+        // 缓存map中存着所有contextName的信息Map<String, DefaultNode>，从缓存中拿到context的信息，放入threadLocal中
+        // 名字相同，线程不同的context，共同一个node (相同的context肯定要共用一个node来统计啊)
         if (context == null) {
             // 缓存map的key为context名称，value为EntranceNode
             Map<String, DefaultNode> localCacheNameMap = contextNameNodeMap;
@@ -141,8 +143,6 @@ public class ContextUtil {
                     setNullContext();
                     return NULL_CONTEXT;
                 } else {
-                    // 1. 创建一个name对应的node，放入root的树下
-                    // 2. 通过写时复制的方式写入全局map
                     LOCK.lock();
                     try {
                         node = contextNameNodeMap.get(name);
@@ -151,6 +151,8 @@ public class ContextUtil {
                                 setNullContext();
                                 return NULL_CONTEXT;
                             } else {
+                                // 2.1 创建一个name对应的node，放入root的树下
+                                // 2.2 通过写时复制的方式写入全局缓存map中
                                 node = new EntranceNode(new StringResourceWrapper(name, EntryType.IN), null);
                                 // Add entrance node.
                                 // 将新建的node加入root中
@@ -168,8 +170,8 @@ public class ContextUtil {
                     }
                 }
             }
-            // 1. 构建context(主要就是将entranceNode包装成context)
-            // 2. 设置到threadlocal中
+            // 3. 构建context(主要就是将entranceNode包装成context)
+            // 4. 设置到threadLocal中
             context = new Context(node, name);
             context.setOrigin(origin);
             contextHolder.set(context);

@@ -62,6 +62,7 @@ public class Context {
     private final String name;
 
     /**
+     * 一个Context会有一个入口节点，用户统计当前Context的总体流量数据
      * The entrance node of current invocation tree.
      */
     private DefaultNode entranceNode;
