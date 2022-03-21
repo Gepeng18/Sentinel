@@ -67,19 +67,20 @@ public class SimpleHttpHeartbeatSender implements HeartbeatSender {
             RecordLog.info("[SimpleHttpHeartbeatSender] Command server port not initialized, won't send heartbeat");
             return false;
         }
-        // 获取控制台的ip和端口等信息
+        // 1. 获取控制台的ip和端口等信息
         Endpoint addrInfo = getAvailableAddress();
         if (addrInfo == null) {
             return false;
         }
 
-        // 设置http调用的ip和端口，还有访问的url
+        // 2. 设置访问参数，http调用的ip和端口，还有访问的url
         SimpleHttpRequest request = new SimpleHttpRequest(addrInfo, TransportConfig.getHeartbeatApiPath());
-        // 获取版本号，端口等信息
+        //    设置版本号，端口等额外参数信息
         request.setParams(heartBeat.generateCurrentMessage());
         try {
-            // 发送post请求
+            // 3. 发送post请求
             SimpleHttpResponse response = httpClient.post(request);
+            // 如果返回值是OK_STATUS，则表示与dashBoard连接正常
             if (response.getStatusCode() == OK_STATUS) {
                 return true;
             } else if (clientErrorCode(response.getStatusCode()) || serverErrorCode(response.getStatusCode())) {

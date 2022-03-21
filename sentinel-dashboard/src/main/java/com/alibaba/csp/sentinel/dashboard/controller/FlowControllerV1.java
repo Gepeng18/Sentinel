@@ -133,6 +133,9 @@ public class FlowControllerV1 {
         return null;
     }
 
+    /**
+     * 控制台新增规则
+     */
     @PostMapping("/rule")
     @AuthAction(PrivilegeType.WRITE_RULE)
     public Result<FlowRuleEntity> apiAddFlowRule(@RequestBody FlowRuleEntity entity) {
@@ -147,8 +150,9 @@ public class FlowControllerV1 {
         entity.setLimitApp(entity.getLimitApp().trim());
         entity.setResource(entity.getResource().trim());
         try {
+            // 1. 新增的规则保存在缓存中(ConcurrentHashMap，保存了allRules、machineRules、appRules)
             entity = repository.save(entity);
-
+            // 2. 通过publishRules来向客户端发布规则
             publishRules(entity.getApp(), entity.getIp(), entity.getPort()).get(5000, TimeUnit.MILLISECONDS);
             return Result.ofSuccess(entity);
         } catch (Throwable t) {

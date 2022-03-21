@@ -35,7 +35,8 @@ public final class CommandCenterProvider {
     }
 
     private static void resolveInstance() {
-        // 获取SpiOrder更大的子类实现类，即 SimpleHttpCommandCenter
+        // 1. 获取SpiOrder更大的子类实现类，即 SimpleHttpCommandCenter
+        // 可以看到 com.alibaba.csp.sentinel.transport.CommandCenter 里面只有一个类 SimpleHttpCommandCenter
         CommandCenter resolveCommandCenter = SpiLoader.of(CommandCenter.class).loadHighestPriorityInstance();
 
         if (resolveCommandCenter == null) {

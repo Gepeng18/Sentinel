@@ -32,7 +32,8 @@ public class CommandHandlerProvider implements Iterable<CommandHandler> {
 
     /**
      * 获取所有的CommandHandler实现类
-     * 这个类会通过spi先加载CommandHandler的实现类，然后将实现类按注解上面的name属性放入到map里面去。
+     * 这个类会通过spi先加载CommandHandler的实现类(com.alibaba.csp.sentinel.command.CommandHandler文件中配置的)，
+     * 然后将实现类按注解上面的name属性放入到map里面去。
      * CommandHandler的实现类是用来和控制台进行交互的处理类，负责处理。
      * 这也是策略模式的一种应用，根据map里面的不同策略来做不同的处理，
      * 例如SendMetricCommandHandler是用来统计调用信息然后发送给控制台用的，

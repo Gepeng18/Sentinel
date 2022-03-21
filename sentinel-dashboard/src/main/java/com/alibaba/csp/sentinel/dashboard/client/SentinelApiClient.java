@@ -419,11 +419,13 @@ public class SentinelApiClient {
             AssertUtil.notEmpty(app, "Bad app name");
             AssertUtil.notEmpty(ip, "Bad machine IP");
             AssertUtil.isTrue(port > 0, "Bad machine port");
+            // 1. 数据组装
             String data = JSON.toJSONString(
                 entities.stream().map(r -> r.toRule()).collect(Collectors.toList()));
             Map<String, String> params = new HashMap<>(2);
             params.put("type", type);
             params.put("data", data);
+            // 2. 控制台通过httpClient将流控规则发送到客户端。
             return executeCommand(app, ip, port, SET_RULES_PATH, params, true)
                 .thenCompose(r -> {
                     if ("success".equalsIgnoreCase(r.trim())) {

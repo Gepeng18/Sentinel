@@ -22,6 +22,9 @@ import com.alibaba.csp.sentinel.log.RecordLog;
 import com.alibaba.csp.sentinel.transport.CommandCenter;
 
 /**
+ * 这个类与 {@link FlowControllerV1#apiAddFlowRule} 互相联系
+ * 控制台的FlowControllerV1接收chrome的请求，修改数据，然后推给客户端，
+ * 这里处理控制台发来的请求，调用相应的handler进行处理
  * @author Eric Zhao
  */
 @InitOrder(-1)
@@ -29,7 +32,7 @@ public class CommandCenterInitFunc implements InitFunc {
 
     @Override
     public void init() throws Exception {
-        // 获取commandCenter对象
+        // 1. 获取commandCenter对象，即SimpleHttpCommandCenter
         CommandCenter commandCenter = CommandCenterProvider.getCommandCenter();
 
         if (commandCenter == null) {
@@ -37,7 +40,7 @@ public class CommandCenterInitFunc implements InitFunc {
             return;
         }
 
-        // 调用SimpleHttpCommandCenter的beforeStart方法
+        // 2. 调用SimpleHttpCommandCenter的beforeStart方法
         commandCenter.beforeStart();
         commandCenter.start();
         RecordLog.info("[CommandCenterInit] Starting command center: "

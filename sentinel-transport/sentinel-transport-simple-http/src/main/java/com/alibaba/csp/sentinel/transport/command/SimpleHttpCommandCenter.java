@@ -66,10 +66,9 @@ public class SimpleHttpCommandCenter implements CommandCenter {
     @SuppressWarnings("rawtypes")
     public void beforeStart() throws Exception {
         // Register handlers
-        // 调用CommandHandlerProvider的namedHandlers方法
-        // 获取CommandHandler的spi中设置的实现类
+        // 1. 调用CommandHandlerProvider的namedHandlers方法，获取CommandHandler的spi中设置的实现类
         Map<String, CommandHandler> handlers = CommandHandlerProvider.getInstance().namedHandlers();
-        // 将handlers中的数据设置到handlerMap中
+        // 2. 将handler设置到缓存中
         registerCommands(handlers);
     }
 
@@ -80,9 +79,9 @@ public class SimpleHttpCommandCenter implements CommandCenter {
      */
     @Override
     public void start() throws Exception {
-        // 获取当前机器的cpu线程数
+        // 1. 获取当前机器的cpu线程数
         int nThreads = Runtime.getRuntime().availableProcessors();
-        // 创建一个cpu线程数大小的固定线程池，用来做业务线程池用
+        // 2. 创建一个cpu线程数大小的固定线程池，用来做业务线程池用
         this.bizExecutor = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
             new ArrayBlockingQueue<Runnable>(10),
             new NamedThreadFactory("sentinel-command-center-service-executor", true),
@@ -109,7 +108,7 @@ public class SimpleHttpCommandCenter implements CommandCenter {
             @Override
             public void run() {
                 boolean success = false;
-                // 创建一个ServerSocket
+                // 3. 创建一个ServerSocket，将这个ServerSocket扔给一个单线程池，让它去接收连接(应该是为了防止阻塞)
                 ServerSocket serverSocket = getServerSocketFromBasePort(port);
 
                 if (serverSocket != null) {
@@ -198,14 +197,14 @@ public class SimpleHttpCommandCenter implements CommandCenter {
             while (true) {
                 Socket socket = null;
                 try {
-                    // 建立连接
+                    // 1. 建立连接
                     socket = this.serverSocket.accept();
-                    // 默认的超时时间是3s
+                    // 2. 先设置默认的超时时间是3s
                     setSocketSoTimeout(socket);
-                    // HttpEventTask是Runnable的实现类，所以调用bizExecutor的submit的时候会调用其中的
-                    // run方法使用socket与控制台进行交互。
+                    // 3. HttpEventTask是Runnable的实现类，所以调用bizExecutor的submit的时候会调用其中的run方法使用socket与控制台进行交互。
+                    // 3.1 将建立连接的socket交给线程池执行
                     HttpEventTask eventTask = new HttpEventTask(socket);
-                    // 使用业务线程异步处理
+                    // 4. 使用业务线程异步处理
                     bizExecutor.submit(eventTask);
                 } catch (Exception e) {
                     CommandCenterLog.info("Server error", e);

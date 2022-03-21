@@ -31,7 +31,7 @@ import com.alibaba.csp.sentinel.transport.config.TransportConfig;
 
 /**
  * Global init function for heartbeat sender.
- *
+ * 这个类不停地发送心跳给控制台，MachineRegistryController类的receiveHeartBeat接口接收心跳包，存储在缓存中
  * @author Eric Zhao
  */
 @InitOrder(-1)
@@ -49,20 +49,20 @@ public class HeartbeatSenderInitFunc implements InitFunc {
 
     @Override
     public void init() {
-        // 获取HeartbeatSender的实现类
+        // 1. 获取HeartbeatSender的实现类
         HeartbeatSender sender = HeartbeatSenderProvider.getHeartbeatSender();
         if (sender == null) {
             RecordLog.warn("[HeartbeatSenderInitFunc] WARN: No HeartbeatSender loaded");
             return;
         }
 
-        //创建一个corepoolsize为2，maximumPoolSize为最大的线程池
+        // 2. 创建一个corePoolSize为2，maximumPoolSize为最大的线程池
         initSchedulerIfNeeded();
-        // 获取心跳间隔时间，默认10s
+        // 3. 获取心跳间隔时间，默认10s
         long interval = retrieveInterval(sender);
-        // 设置间隔心跳时间
+        // 将心跳时间设置进去
         setIntervalIfNotExists(interval);
-        // 开启一个定时任务，每隔interval时间发送一个心跳
+        // 4. 开启一个定时任务，每隔interval时间发送一个心跳
         scheduleHeartbeatTask(sender, interval);
     }
 
