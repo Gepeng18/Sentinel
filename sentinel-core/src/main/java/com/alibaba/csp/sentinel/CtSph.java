@@ -116,7 +116,7 @@ public class CtSph implements Sph {
 
     private Entry entryWithPriority(ResourceWrapper resourceWrapper, int count, boolean prioritized, Object... args)
         throws BlockException {
-        // 获取当前线程的上下文，从threadlocal中获取
+        // 获取当前线程的上下文，从threadLocal中获取
         // 一个请求占用一个线程，一个线程绑定一个context
         Context context = ContextUtil.getContext();
         // 若context是NullContext类型，则表示当前系统中的context数量已经超出的阈值
@@ -127,7 +127,7 @@ public class CtSph implements Sph {
             return new CtEntry(resourceWrapper, null, context);
         }
 
-        // threadlocal中没有，表明当前请求的当前线程没创建，就创建一个默认的，放入ThreadLocal
+        // threadLocal中没有，表明当前请求的当前线程没创建，就创建一个默认的，放入ThreadLocal
         if (context == null) {
             // Using default context.
             context = InternalContextUtil.internalEnter(Constants.CONTEXT_DEFAULT_NAME);

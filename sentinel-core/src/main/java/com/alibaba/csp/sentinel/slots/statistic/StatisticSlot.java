@@ -73,8 +73,8 @@ public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
             // 2. 增加相关计数
             // 2.1 请求通过，当前线程数加1，通过的请求加1
             // 代码能走到这里，说明前面所有规则检测全部通过，此时就可以将该请求统计到相应数据中了
-            node.increaseThreadNum();
-            node.addPassRequest(count);
+            node.increaseThreadNum(); // LongAdder
+            node.addPassRequest(count); // Metric
 
             // 2.2 对于原始节点增加数量
             // 这个原始节点好像和集群有关，因为setOriginNode()方法只在集群中被调用
@@ -119,7 +119,7 @@ public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
 
             // Add block count.
             // 2.1 对于阻塞数增加数量
-            node.increaseBlockQps(count);
+            node.increaseBlockQps(count); // Metric
             if (context.getCurEntry().getOriginNode() != null) {
                 context.getCurEntry().getOriginNode().increaseBlockQps(count);
             }

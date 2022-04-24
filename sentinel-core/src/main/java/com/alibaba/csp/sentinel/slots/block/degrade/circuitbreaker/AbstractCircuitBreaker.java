@@ -64,6 +64,12 @@ public abstract class AbstractCircuitBreaker implements CircuitBreaker {
         return currentState.get();
     }
 
+    /**
+     * 熔断器为半开启状态下的整个操作流程为：
+     * 1、这里的tryPass即每隔一段时间，放过去一个请求，该请求执行正常的逻辑处理
+     * 2、{@link ExceptionCircuitBreaker#onRequestComplete} 做后续操作，一旦这个请求抛异常了，就开启熔断器，如果该请求正常执行，则关闭熔断器
+     * 这两个步骤配合使用
+     */
     @Override
     public boolean tryPass(Context context) {
         // Template implementation.

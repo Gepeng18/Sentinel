@@ -121,10 +121,10 @@ public class ContextUtil {
     }
 
     /**
-     * 主要干了两件事，将node创建并放到root中，将context创建并放到threadlocal中
+     * 主要干了两件事，将node创建并放到root中，将context创建并放到threadLocal中
      * 1. 创建一个name对应的node，放入root的树下，root是一个全局信息
      * 2. 通过写时复制的方式写入全局map
-     * 3. 构建context，并设置到threadlocal中
+     * 3. 构建context，并设置到threadLocal中
      */
     protected static Context trueEnter(String name, String origin) {
         // 1. 尝试着从ThreadLocal中获取Context

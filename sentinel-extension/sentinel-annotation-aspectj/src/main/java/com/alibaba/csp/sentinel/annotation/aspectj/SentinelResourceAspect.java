@@ -43,6 +43,7 @@ public class SentinelResourceAspect extends AbstractSentinelAspectSupport {
     // 环绕通知
     @Around("sentinelResourceAnnotationPointcut()")
     public Object invokeResourceWithSentinel(ProceedingJoinPoint pjp) throws Throwable {
+        // 获取本注解增强的那个方法
         Method originMethod = resolveMethod(pjp);
 
         SentinelResource annotation = originMethod.getAnnotation(SentinelResource.class);
@@ -52,7 +53,7 @@ public class SentinelResourceAspect extends AbstractSentinelAspectSupport {
         }
         // resourceName即为注解中的value值，如果注解value为空，则为自定义的类名+方法名+参数名
         String resourceName = getResourceName(annotation.value(), originMethod);
-        EntryType entryType = annotation.entryType();  // 注解的entry类型，in/out
+        EntryType entryType = annotation.entryType();  // 注解的entry类型，in/out，默认是out
         int resourceType = annotation.resourceType();  // 注解的资源类型
         Entry entry = null;
         try {
